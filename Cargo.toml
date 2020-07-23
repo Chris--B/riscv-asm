@@ -15,3 +15,4 @@ name = "dis"
 path = "src/dis.rs"
 
 [dependencies]
+gumdrop = "0.8"
