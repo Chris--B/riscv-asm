@@ -150,9 +150,77 @@ fn check_word_bits_1() {
 }
 
 fn decode_opcode(w: Word) -> String {
-    let _opcode = w.bits(6, 0);
+    let opcode = w.bits(6, 0);
+    let rd = w.bits(11, 7);
+    let funct3 = w.bits(14, 12);
+    let rs1 = w.bits(19, 15);
+    let rs2 = w.bits(24, 20);
+    let funct7 = w.bits(31, 25);
 
-    "".into()
+    match (opcode, funct3, funct7) {
+        // Load Instructions
+        (0b_000_0011, 0b_000, _) => format!("lb ~~"),
+        (0b_000_0011, 0b_001, _) => format!("lh ~~"),
+        (0b_000_0011, 0b_010, _) => format!("lw ~~"),
+        (0b_000_0011, 0b_011, _) => format!("ld ~~"),
+        (0b_000_0011, 0b_100, _) => format!("lbu ~~"),
+        (0b_000_0011, 0b_101, _) => format!("lhu ~~"),
+        (0b_000_0011, 0b_110, _) => format!("lwu ~~"),
+
+        // Fences
+        (0b_000_1111, 0b_000, _) => format!("fence ~~"),
+        (0b_000_1111, 0b_001, _) => format!("fence.i ~~"),
+
+        // Arithmetic ?
+        (0b_001_0011, 0b_000, _) => format!("addi ~~"),
+        (0b_001_0011, 0b_001, 0b_000_0000) => format!("slli ~~"),
+        (0b_001_0011, 0b_010, _) => format!("slti ~~"),
+        (0b_001_0011, 0b_011, _) => format!("sltiu ~~"),
+        (0b_001_0011, 0b_100, _) => format!("xori ~~"),
+        (0b_001_0011, 0b_101, 0b_000_0000) => format!("srli ~~"),
+        (0b_001_0011, 0b_101, 0b_100_0000) => format!("srai ~~"),
+        (0b_001_0011, 0b_110, _) => format!("ori ~~"),
+        (0b_001_0011, 0b_111, _) => format!("andi ~~"),
+
+        // ???
+        (0b_001_0111, _, _) => format!("auipc ~~"),
+
+        // More shifting?
+        (0b_001_1011, 0b_000, _) => format!("addiw ~~"),
+        (0b_001_1011, 0b_001, 0b_000_0000) => format!("slliw ~~"),
+        (0b_001_1011, 0b_101, 0b_000_0000) => format!("srliw ~~"),
+        (0b_001_1011, 0b_101, 0b_100_0000) => format!("sraiw ~~"),
+
+        // Store Instructions
+        (0b_010_0011, 0b_000, _) => format!("sb ~~"),
+        (0b_010_0011, 0b_001, _) => format!("sh ~~"),
+        (0b_010_0011, 0b_010, _) => format!("sw ~~"),
+        (0b_010_0011, 0b_011, _) => format!("sd ~~"),
+
+        _ => {
+            #[derive(Debug)]
+            struct OpcodePlus {
+                opcode: u32,
+                funct3: u32,
+                funct7: u32,
+            };
+
+            let info = OpcodePlus {
+                opcode,
+                funct3,
+                funct7,
+            };
+            if false {
+                format!(
+                    "?? 0x{word:08x} / 0b{word:032b}: {info:?}",
+                    word = w.0,
+                    info = info
+                )
+            } else {
+                "".into()
+            }
+        }
+    }
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -190,6 +258,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let code: Vec<u32> = extract_code(&elf, &buffer);
 
     // Hex Dump
+    println!("HEX:");
     const WORDS_PER_LINE: usize = 4;
     for (idx, four_words) in code.as_slice().chunks(WORDS_PER_LINE).enumerate() {
         print!("  0x{:>03x}: ", WORDS_PER_LINE * idx);
@@ -198,6 +267,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         println!();
     }
+    println!();
+
+    // Text
+    println!("ASM:");
+    for (idx, four_words) in code.as_slice().chunks(2 * WORDS_PER_LINE).enumerate() {
+        print!("  0x{:>03x}: ", 2 * WORDS_PER_LINE * idx);
+        for word in four_words {
+            let instr = decode_opcode(Word(*word));
+            print!("{:<12}", instr);
+        }
+        println!();
+    }
+    println!();
 
     Ok(())
 }
