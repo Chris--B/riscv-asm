@@ -184,6 +184,47 @@ impl fmt::Debug for UnknownInstr {
 
 #[allow(unused_variables)]
 fn decode_opcode(w: Word) -> String {
+    /*
+      Different instructions may use different named fields in the enoding,
+    and not all fields are always used. Many fields overlap.
+    However, if two instructions use the same field name, that field is
+    located in the same location in the word for both instructions.
+
+    RISC-V Instruction Encodings by type:
+    (note: funct3 is abbreviated as f3)
+
+        R-type
+         0                   1                   2                   3
+         0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        |    opcode   |    rd   | f3  |   rs1   |   rs2   |    funct7   |
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+        I-type
+         0                   1                   2                   3
+         0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        |    opcode   |    rd   | f3  |   rs1   |       imm[11;0]       |
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+        S-type
+         0                   1                   2                   3
+         0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        |    opcode   | imm[4;0]| f3  |   rs1   |   rs2   |  imm[11;5]  |
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+        U-type
+         0                   1                   2                   3
+         0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        |    opcode   |    rd   |               imm[31;12]              |
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+    */
+
+    // We extract each field value here, then reference them in the
+    /// larger match block below.
     let opcode = w.bits(6, 0);
     let rd = w.bits(11, 7);
     let funct3 = w.bits(14, 12);
