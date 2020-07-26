@@ -1,3 +1,7 @@
+#![allow(clippy::inconsistent_digit_grouping)]
+#![deny(unreachable_patterns)]
+
+use std::fmt;
 use std::fs;
 use std::path::Path;
 
@@ -64,10 +68,10 @@ fn extract_code<'a>(elf: &'a Elf, buffer: &'a [u8]) -> Vec<u32> {
 
     assert_eq!(load_headers.len(), 1);
     let header = load_headers[0];
-    assert_eq!(header.p_memsz % 4, 0);
+    assert_eq!(header.p_filesz % 4, 0);
 
     let start = header.p_offset as usize;
-    let end = start + header.p_memsz as usize;
+    let end = start + header.p_filesz as usize;
     let bytes = &buffer[start..end];
 
     bytes
@@ -149,6 +153,36 @@ fn check_word_bits_1() {
     }
 }
 
+#[derive(Copy, Clone)]
+struct UnknownInstr {
+    word: u32,
+    opcode: u32,
+    rd: u32,
+    funct3: u32,
+    rs1: u32,
+    rs2: u32,
+    funct7: u32,
+}
+
+fn fmt_hex_bin(x: u32) -> String {
+    format!("(0x{:x}, 0b_{:b})", x, x)
+}
+
+impl fmt::Debug for UnknownInstr {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_struct("UnknownInstr")
+            .field("word", &fmt_hex_bin(self.word))
+            .field("opcode", &fmt_hex_bin(self.opcode))
+            .field("rd", &fmt_hex_bin(self.rd))
+            .field("funct3", &fmt_hex_bin(self.funct3))
+            .field("rs1", &fmt_hex_bin(self.rs1))
+            .field("rs2", &fmt_hex_bin(self.rs2))
+            .field("funct7", &fmt_hex_bin(self.funct7))
+            .finish()
+    }
+}
+
+#[allow(unused_variables)]
 fn decode_opcode(w: Word) -> String {
     let opcode = w.bits(6, 0);
     let rd = w.bits(11, 7);
@@ -157,67 +191,106 @@ fn decode_opcode(w: Word) -> String {
     let rs2 = w.bits(24, 20);
     let funct7 = w.bits(31, 25);
 
+    assert!(funct3 < (1 << 3));
+    assert!(funct7 < (1 << 7));
+
     match (opcode, funct3, funct7) {
         // Load Instructions
-        (0b_000_0011, 0b_000, _) => format!("lb ~~"),
-        (0b_000_0011, 0b_001, _) => format!("lh ~~"),
-        (0b_000_0011, 0b_010, _) => format!("lw ~~"),
-        (0b_000_0011, 0b_011, _) => format!("ld ~~"),
-        (0b_000_0011, 0b_100, _) => format!("lbu ~~"),
-        (0b_000_0011, 0b_101, _) => format!("lhu ~~"),
-        (0b_000_0011, 0b_110, _) => format!("lwu ~~"),
+        (0x03, 0x0, _) => ("lb").into(),
+        (0x03, 0x1, _) => ("lh").into(),
+        (0x03, 0x2, _) => ("lw").into(),
+        (0x03, 0x3, _) => ("ld").into(),
+        (0x03, 0x4, _) => ("lbu").into(),
+        (0x03, 0x5, _) => ("lhu").into(),
+        (0x03, 0x6, _) => ("lwu").into(),
 
         // Fences
-        (0b_000_1111, 0b_000, _) => format!("fence ~~"),
-        (0b_000_1111, 0b_001, _) => format!("fence.i ~~"),
+        (0x0f, 0x0, _) => ("fence").into(),
+        (0x0f, 0x1, _) => ("fence.i").into(),
 
-        // Arithmetic ?
-        (0b_001_0011, 0b_000, _) => format!("addi ~~"),
-        (0b_001_0011, 0b_001, 0b_000_0000) => format!("slli ~~"),
-        (0b_001_0011, 0b_010, _) => format!("slti ~~"),
-        (0b_001_0011, 0b_011, _) => format!("sltiu ~~"),
-        (0b_001_0011, 0b_100, _) => format!("xori ~~"),
-        (0b_001_0011, 0b_101, 0b_000_0000) => format!("srli ~~"),
-        (0b_001_0011, 0b_101, 0b_100_0000) => format!("srai ~~"),
-        (0b_001_0011, 0b_110, _) => format!("ori ~~"),
-        (0b_001_0011, 0b_111, _) => format!("andi ~~"),
+        // Arithmetic
+        (0x13, 0x0, _) => ("addi").into(),
+        (0x13, 0x1, 0x00) => ("slli").into(),
+        (0x13, 0x2, _) => ("slti").into(),
+        (0x13, 0x3, _) => ("sltiu").into(),
+        (0x13, 0x4, _) => ("xori").into(),
+        (0x13, 0x5, 0x00) => ("srli").into(),
+        (0x13, 0x5, 0x20) => ("srai").into(),
+        (0x13, 0x6, _) => ("ori").into(),
+        (0x13, 0x7, _) => ("andi").into(),
 
         // ???
-        (0b_001_0111, _, _) => format!("auipc ~~"),
+        (0x17, _, _) => ("auipc").into(),
 
         // More shifting?
-        (0b_001_1011, 0b_000, _) => format!("addiw ~~"),
-        (0b_001_1011, 0b_001, 0b_000_0000) => format!("slliw ~~"),
-        (0b_001_1011, 0b_101, 0b_000_0000) => format!("srliw ~~"),
-        (0b_001_1011, 0b_101, 0b_100_0000) => format!("sraiw ~~"),
+        (0x1b, 0x0, _) => ("addiw").into(),
+        (0x1b, 0x1, 0x00) => ("slliw").into(),
+        (0x1b, 0x5, 0x00) => ("srliw").into(),
+        (0x1b, 0x5, 0x20) => ("sraiw").into(),
 
         // Store Instructions
-        (0b_010_0011, 0b_000, _) => format!("sb ~~"),
-        (0b_010_0011, 0b_001, _) => format!("sh ~~"),
-        (0b_010_0011, 0b_010, _) => format!("sw ~~"),
-        (0b_010_0011, 0b_011, _) => format!("sd ~~"),
+        (0x23, 0x0, _) => ("sb").into(),
+        (0x23, 0x1, _) => ("sh").into(),
+        (0x23, 0x2, _) => ("sw").into(),
+        (0x23, 0x3, _) => ("sd").into(),
+
+        // Some R-types
+        (0x33, 0x0, 0x00) => ("add").into(),
+        (0x33, 0x0, 0x20) => ("sub").into(),
+        (0x33, 0x1, _) => ("sll").into(),
+        (0x33, 0x2, _) => ("slt").into(),
+        (0x33, 0x3, _) => ("sltu").into(),
+        (0x33, 0x4, _) => ("xor").into(),
+        (0x33, 0x5, 0x00) => ("srl").into(),
+        (0x33, 0x5, 0x20) => ("sra").into(),
+        (0x33, 0x6, _) => ("or").into(),
+        (0x33, 0x7, _) => ("and").into(),
+
+        // ???
+        (0x37, _, _) => ("lui").into(),
+
+        // ???
+        (0x3b, 0x0, 0x00) => ("addw").into(),
+        (0x3b, 0x0, 0x20) => ("subw").into(),
+        (0x3b, 0x1, 0x00) => ("sllw").into(),
+        (0x3b, 0x5, 0x00) => ("srlw").into(),
+        (0x3b, 0x5, 0x20) => ("sraw").into(),
+
+        // ???
+        (0x63, 0x0, _) => ("beq").into(),
+        (0x63, 0x1, _) => ("bne").into(),
+        (0x63, 0x4, _) => ("blt").into(),
+        (0x63, 0x5, _) => ("bge").into(),
+        (0x63, 0x6, _) => ("bltu").into(),
+        (0x63, 0x7, _) => ("bgeu").into(),
+
+        (0x67, 0x0, _) => ("jalr").into(),
+
+        (0x6f, _, _) => ("jal").into(),
+
+        (0x73, 0x0, 0x0) => ("ecall").into(),
+        (0x73, 0x0, 0x1) => ("ebreak").into(),
+        (0x73, 0x1, _) => ("csrrw").into(),
+        (0x73, 0x2, _) => ("csrrs").into(),
+        (0x73, 0x3, _) => ("csrrc").into(),
+        (0x73, 0x5, _) => ("csrrwi").into(),
+        (0x73, 0x6, _) => ("csrrsi").into(),
+        (0x73, 0x7, _) => ("csrrci").into(),
 
         _ => {
-            #[derive(Debug)]
-            struct OpcodePlus {
-                opcode: u32,
-                funct3: u32,
-                funct7: u32,
-            };
-
-            let info = OpcodePlus {
-                opcode,
-                funct3,
-                funct7,
-            };
             if false {
-                format!(
-                    "?? 0x{word:08x} / 0b{word:032b}: {info:?}",
-                    word = w.0,
-                    info = info
-                )
+                let info = UnknownInstr {
+                    word: w.0,
+                    opcode,
+                    rd,
+                    funct3,
+                    rs1,
+                    rs2,
+                    funct7,
+                };
+                format!("{:?}", info)
             } else {
-                "".into()
+                format!("??? opcode=0x{:x} (0x{:08x})", opcode, w.0)
             }
         }
     }
@@ -260,6 +333,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Hex Dump
     println!("HEX:");
     const WORDS_PER_LINE: usize = 4;
+
     for (idx, four_words) in code.as_slice().chunks(WORDS_PER_LINE).enumerate() {
         print!("  0x{:>03x}: ", WORDS_PER_LINE * idx);
         for word in four_words {
@@ -271,11 +345,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Text
     println!("ASM:");
-    for (idx, four_words) in code.as_slice().chunks(2 * WORDS_PER_LINE).enumerate() {
-        print!("  0x{:>03x}: ", 2 * WORDS_PER_LINE * idx);
+    const INSTR_PER_LINE: usize = 1;
+
+    for (idx, four_words) in code.as_slice().chunks(INSTR_PER_LINE).enumerate() {
+        print!("  0x{:>03x}: ", INSTR_PER_LINE * idx);
         for word in four_words {
             let instr = decode_opcode(Word(*word));
-            print!("{:<12}", instr);
+            print!("{:<25}", instr);
         }
         println!();
     }
