@@ -7,6 +7,10 @@ name: CI
 on:
   push:
     branches: [ master ]
+    paths-ignore:
+        - .git*
+        - scripts/**
+        - README.md
   pull_request:
     branches: [ master ]
 
