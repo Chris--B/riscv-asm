@@ -211,7 +211,7 @@ pub fn decode_opcode(w: u32) -> String {
     };
 
     if let Some(instr) = o_instr {
-        format!("{:?}", o_instr)
+        format!("{:?}", instr)
     } else {
         format!("opcode= 0x{:x}, 0b_{:b}", opcode, opcode)
     }

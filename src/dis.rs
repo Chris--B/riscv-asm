@@ -81,36 +81,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    // Dump the entire Object struct to disk to debug it
-    let debug_path = format!("{}.debug", opts.output.unwrap());
-    fs::write(debug_path, &format!("{:#?}", elf))?;
-
     let code: Vec<u32> = riscv_asm::extract_code(&elf, &buffer);
-
-    // Hex Dump
-    println!("HEX:");
-    const WORDS_PER_LINE: usize = 4;
-
-    for (idx, four_words) in code.as_slice().chunks(WORDS_PER_LINE).enumerate() {
-        print!("  0x{:>03x}: ", WORDS_PER_LINE * idx);
-        for word in four_words {
-            print!("0x{:08x} ", word);
-        }
-        println!();
-    }
-    println!();
 
     // Text
     println!("ASM:");
-    const INSTR_PER_LINE: usize = 1;
 
-    for (idx, four_words) in code.as_slice().chunks(INSTR_PER_LINE).enumerate() {
-        let addr = std::mem::size_of::<u32>() * INSTR_PER_LINE * idx;
-        print!("  0x{:>03x}: ", addr);
-        for word in four_words {
-            let instr = riscv_asm::decode_opcode(*word);
-            print!("{:<25}", instr);
+    for (idx, word) in code.iter().enumerate() {
+        let (idx, word): (usize, u32) = (idx, *word);
+
+        let addr = std::mem::size_of::<u32>() * idx;
+
+        // address label
+        print!("  0x{:>03x}:    ", addr);
+
+        // raw word as bytes
+        for byte in word.to_le_bytes().iter() {
+            print!("{:02x} ", byte);
         }
+
+        let instr = riscv_asm::decode_opcode(word);
+        print!("   {:<25}", instr);
+
         println!();
     }
     println!();
