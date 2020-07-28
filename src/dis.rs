@@ -1,8 +1,3 @@
-use std::fs;
-use std::path::Path;
-
-use goblin::elf::Elf;
-use goblin::Object;
 use gumdrop::Options;
 
 #[derive(Debug, Options)]
@@ -38,6 +33,8 @@ impl MyOptions {
 
     /// Resolves extra options
     fn resolve_extras(&mut self) {
+        use std::path::Path;
+
         // This path may optionally be specified directly.
         // When it's not, we need use the input file to derive an output.
         if self.output.is_none() {
@@ -57,48 +54,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opts = MyOptions::new();
     dbg!(&opts);
 
-    let buffer: Vec<u8> = fs::read(&opts.input)?;
-    let elf: Elf = match Object::parse(&buffer)? {
-        Object::Elf(elf) => elf,
-        Object::PE(_pe) => {
-            eprintln!("{}: Expected ELF, found PE", opts.input);
-            return Ok(());
-        }
-        Object::Mach(_mach) => {
-            eprintln!("{}: Expected ELF, found MACH", opts.input);
-            return Ok(());
-        }
-        Object::Archive(_archive) => {
-            eprintln!("{}: Expected ELF, found ARCHIVE", opts.input);
-            return Ok(());
-        }
-        Object::Unknown(magic) => {
-            eprintln!(
-                "{}: Expected ELF, found unknown format (magic: {:#x}",
-                opts.input, magic
-            );
-            return Ok(());
-        }
-    };
-
-    let code: Vec<u32> = riscv_asm::extract_code(&elf, &buffer);
+    let code: Vec<u32> = riscv_asm::parse_elf_from_path(&opts.input)?;
 
     // Text
     println!("ASM:");
 
-    for (idx, word) in code.iter().enumerate() {
-        let (idx, word): (usize, u32) = (idx, *word);
+    for (idx, word) in code.iter().cloned().enumerate() {
+        // Address of instruction
+        print!("  0x{:>03x}:    ", std::mem::size_of::<u32>() * idx);
 
-        let addr = std::mem::size_of::<u32>() * idx;
-
-        // address label
-        print!("  0x{:>03x}:    ", addr);
-
-        // raw word as bytes
+        // Raw bytes of instruction
         for byte in word.to_le_bytes().iter() {
             print!("{:02x} ", byte);
         }
 
+        // Instruction as text
         let instr = riscv_asm::decode_opcode(word);
         print!("   {:<25}", instr);
 
