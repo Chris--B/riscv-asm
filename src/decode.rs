@@ -4,83 +4,23 @@ use crate::instr::{Instr, Reg};
 
 use std::convert::TryInto;
 
-struct Word(u32);
-
-impl Word {
+/// Internal trait to simplify bit operations
+trait Bits {
     /// Extract the bits `lo` through `hi`, inclusive, and then shift them to the 0 position.
-    fn bits(&self, hi: u8, lo: u8) -> u32 {
+    fn bits(&self, hi: u8, lo: u8) -> Self;
+}
+
+impl Bits for u32 {
+    fn bits(&self, hi: u8, lo: u8) -> Self {
         let hi: u32 = hi as u32;
         let mask = u32::MAX >> (31 - hi);
 
-        (self.0 & mask) >> lo
-    }
-}
-
-#[test]
-fn check_word_bits_1() {
-    let w = Word(0xdead_beef);
-    // To help visualize:
-    assert_eq!(w.0, 0b_11011110101011011011111011101111);
-
-    // Sanity check:
-    const AWKWARD: u32 = 0b_0110_1101_1111_0111;
-    assert_eq!(w.0 & (AWKWARD << 5), AWKWARD << 5);
-
-    for (hi, lo, expect) in [
-        (0_u8, 0_u8, 1_u32), // Individual Bits
-        (0, 0, 1),           // ┌ 0xf
-        (1, 1, 1),           // │
-        (2, 2, 1),           // │
-        (3, 3, 1),           // └
-        (4, 4, 0),           // ┌ 0xe
-        (5, 5, 1),           // │
-        (6, 6, 1),           // │
-        (7, 7, 1),           // └
-        (8, 8, 0),           // ┌ 0xe
-        (9, 9, 1),           // │
-        (10, 10, 1),         // │
-        (11, 11, 1),         // └
-        (31, 16, 0xdead),    // High 2 bytes
-        (16, 31, 0x0),       // High 2 bytes backwards
-        (15, 0, 0xbeef),     // Low 2 bytes
-        (31, 24, 0xde),      // High byte
-        (23, 16, 0xad),      // 2nd high byte
-        (15, 8, 0xbe),       // 2nd low byte
-        (7, 0, 0xef),        // Low byte
-        (31, 0, w.0),        // Full range
-        (20, 5, AWKWARD),    // "Awkward" range that crosses bytes
-    ]
-    .iter()
-    .cloned()
-    {
-        let actual = w.bits(hi, lo);
-
-        let label_actual = format!("bits({hi}, {lo})", hi = hi, lo = lo,);
-        let label_expect = format!("0x{expect:x}", expect = expect,);
-
-        assert_eq!(
-            actual,
-            expect,
-            concat!(
-                "\n",
-                "   bits({hi}, {lo}) != 0x{expect:x}\n",
-                "       {label_actual:<12} == 0x{actual:08x} == 0b{actual:032b}\n",
-                "       {label_expect:<12} == 0x{expect:08x} == 0b{expect:032b}\n"
-            ),
-            hi = hi,
-            lo = lo,
-            label_expect = label_expect,
-            expect = expect,
-            label_actual = label_actual,
-            actual = actual
-        );
+        (self & mask) >> lo
     }
 }
 
 #[allow(unused_variables)]
 pub fn decode_opcode(w: u32) -> String {
-    let w = Word(w);
-
     /*
       Different instructions may use different named fields in the enoding,
     and not all fields are always used. Many fields overlap.
@@ -214,5 +154,72 @@ pub fn decode_opcode(w: u32) -> String {
         format!("{:?}", instr)
     } else {
         format!("opcode= 0x{:x}, 0b_{:b}", opcode, opcode)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn check_bits() {
+        const W: u32 = 0xdead_beef;
+
+        // To help visualize:
+        assert_eq!(W, 0b_11011110101011011011111011101111);
+
+        // Sanity check:
+        const AWKWARD: u32 = 0b_0110_1101_1111_0111;
+        assert_eq!(W & (AWKWARD << 5), AWKWARD << 5);
+
+        for (hi, lo, expect) in [
+            (0_u8, 0_u8, 1_u32), // Individual Bits
+            (0, 0, 1),           // ┌ 0xf
+            (1, 1, 1),           // │
+            (2, 2, 1),           // │
+            (3, 3, 1),           // └
+            (4, 4, 0),           // ┌ 0xe
+            (5, 5, 1),           // │
+            (6, 6, 1),           // │
+            (7, 7, 1),           // └
+            (8, 8, 0),           // ┌ 0xe
+            (9, 9, 1),           // │
+            (10, 10, 1),         // │
+            (11, 11, 1),         // └
+            (31, 16, 0xdead),    // High 2 bytes
+            (16, 31, 0x0),       // High 2 bytes backwards
+            (15, 0, 0xbeef),     // Low 2 bytes
+            (31, 24, 0xde),      // High byte
+            (23, 16, 0xad),      // 2nd high byte
+            (15, 8, 0xbe),       // 2nd low byte
+            (7, 0, 0xef),        // Low byte
+            (31, 0, W),          // Full range
+            (20, 5, AWKWARD),    // "Awkward" range that crosses bytes
+        ]
+        .iter()
+        .cloned()
+        {
+            let actual = W.bits(hi, lo);
+
+            let label_actual = format!("bits({hi}, {lo})", hi = hi, lo = lo,);
+            let label_expect = format!("0x{expect:x}", expect = expect,);
+
+            assert_eq!(
+                actual,
+                expect,
+                concat!(
+                    "\n",
+                    "   bits({hi}, {lo}) != 0x{expect:x}\n",
+                    "       {label_actual:<12} == 0x{actual:08x} == 0b{actual:032b}\n",
+                    "       {label_expect:<12} == 0x{expect:08x} == 0b{expect:032b}\n"
+                ),
+                hi = hi,
+                lo = lo,
+                label_expect = label_expect,
+                expect = expect,
+                label_actual = label_actual,
+                actual = actual
+            );
+        }
     }
 }
