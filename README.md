@@ -3,7 +3,10 @@
 
 A WIP, simple-to-use assembler and disassembler for `riscv32i-unknown-none-elf` targets.
 
-![CI](https://github.com/chris--b/riscv-asm/workflows/CI/badge.svg?branch=master)
+[![Build Status Badge][badge-img]][badge-url]
+
+[badge-img]: https://github.com/Chris--b/riscv-asm/workflows/CI/badge.svg?branch=main
+[badge-url]: https://github.com/Chris--B/riscv-asm/actions
 
 ### Building
 
