@@ -22,6 +22,6 @@ Positional arguments:
 
 Optional arguments:
   -h, --help           Print the help message and exit
-  -a, --allow-psuedo   "Use equivilent psuedo instructions when possible" (default: true)
+  -a, --allow-pseudo   "Use equivalent pseudo instructions when possible" (default: true)
   -o, --output OUTPUT  Path to write disassembled output into
 ```

@@ -180,8 +180,9 @@ mod test {
     use Reg::*;
 
     // These asserts give us diffs when they fail.
-    // Import both eq and ne, even though we don't use ne yet, so that future
-    // tests don't accidentally miss this assert_ne and use std's instead.
+    // Import both `assert_eq` and `assert_ne`, even though we don't `assert_ne`
+    // yet, so that future tests don't accidentally miss this import and use
+    // std's macros instead.
     #[allow(unused_imports)]
     use pretty_assertions::{assert_eq, assert_ne};
 

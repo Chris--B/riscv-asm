@@ -6,9 +6,9 @@ struct MyOptions {
     #[options()]
     help: bool,
 
-    /// "Use equivilent psuedo instructions when possible"
+    /// "Use equivalent pseudo instructions when possible"
     #[options(default = "true")]
-    allow_psuedo: bool,
+    allow_pseudo: bool,
 
     /// Path to a RISC-V elf to disassemble
     #[options(free)]
