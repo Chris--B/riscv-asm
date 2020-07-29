@@ -47,42 +47,44 @@ impl Default for Reg {
 }
 
 #[allow(dead_code)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Instr {
+    Illegal,
+
     Lb {
         rd: Reg,
         rs1: Reg,
-        imm12: u32,
+        imm12: i32,
     },
     Lh {
         rd: Reg,
         rs1: Reg,
-        imm12: u32,
+        imm12: i32,
     },
     Lw {
         rd: Reg,
         rs1: Reg,
-        imm12: u32,
+        imm12: i32,
     },
     Ld {
         rd: Reg,
         rs1: Reg,
-        imm12: u32,
+        imm12: i32,
     },
     Lbu {
         rd: Reg,
         rs1: Reg,
-        imm12: u32,
+        imm12: i32,
     },
     Lhu {
         rd: Reg,
         rs1: Reg,
-        imm12: u32,
+        imm12: i32,
     },
     Lwu {
         rd: Reg,
         rs1: Reg,
-        imm12: u32,
+        imm12: i32,
     },
     Fence {
         rd: Reg,
@@ -106,12 +108,12 @@ pub enum Instr {
     FenceI {
         rd: Reg,
         rs1: Reg,
-        imm12: u32,
+        imm12: i32,
     },
     Addi {
         rd: Reg,
         rs1: Reg,
-        imm12: u32,
+        imm12: i32,
     },
     Slli {
         rd: Reg,
@@ -121,17 +123,17 @@ pub enum Instr {
     Slti {
         rd: Reg,
         rs1: Reg,
-        imm12: u32,
+        imm12: i32,
     },
     Sltiu {
         rd: Reg,
         rs1: Reg,
-        imm12: u32,
+        imm12: i32,
     },
     Xori {
         rd: Reg,
         rs1: Reg,
-        imm12: u32,
+        imm12: i32,
     },
     Srli {
         rd: Reg,
@@ -146,16 +148,16 @@ pub enum Instr {
     Ori {
         rd: Reg,
         rs1: Reg,
-        imm12: u32,
+        imm12: i32,
     },
     Andi {
         rd: Reg,
         rs1: Reg,
-        imm12: u32,
+        imm12: i32,
     },
     Auipc {
         rd: Reg,
-        imm20: u32,
+        imm20: i32,
     },
     Sb {
         /// Base address
@@ -163,7 +165,7 @@ pub enum Instr {
         /// Source register
         rs2: Reg,
         /// Offset
-        imm12: u32,
+        imm12: i32,
     },
     Sh {
         /// Base address
@@ -171,7 +173,7 @@ pub enum Instr {
         /// Source register
         rs2: Reg,
         /// Offset
-        imm12: u32,
+        imm12: i32,
     },
     Sw {
         /// Base address
@@ -179,7 +181,7 @@ pub enum Instr {
         /// Source register
         rs2: Reg,
         /// Offset
-        imm12: u32,
+        imm12: i32,
     },
     Sd {
         /// Base address
@@ -187,7 +189,7 @@ pub enum Instr {
         /// Source register
         rs2: Reg,
         /// Offset
-        imm12: u32,
+        imm12: i32,
     },
     Add {
         rd: Reg,
@@ -241,37 +243,37 @@ pub enum Instr {
     },
     Lui {
         rd: Reg,
-        imm20: u32,
+        imm20: i32,
     },
     Beq {
         rs1: Reg,
         rs2: Reg,
-        imm12: u32,
+        imm12: i32,
     },
     Bne {
         rs1: Reg,
         rs2: Reg,
-        imm12: u32,
+        imm12: i32,
     },
     Blt {
         rs1: Reg,
         rs2: Reg,
-        imm12: u32,
+        imm12: i32,
     },
     Bge {
         rs1: Reg,
         rs2: Reg,
-        imm12: u32,
+        imm12: i32,
     },
     Bltu {
         rs1: Reg,
         rs2: Reg,
-        imm12: u32,
+        imm12: i32,
     },
     Bgeu {
         rs1: Reg,
         rs2: Reg,
-        imm12: u32,
+        imm12: i32,
     },
 
     /// Jumps to a target address and saves the return address
@@ -285,7 +287,7 @@ pub enum Instr {
         rd: Reg,
         rs1: Reg,
         /// Encoded as a multiple of 2-bytes
-        imm12: u32,
+        imm12: i32,
     },
 
     /// Jumps to a relative address
@@ -297,7 +299,7 @@ pub enum Instr {
     Jal {
         rd: Reg,
         /// Encoded as a multiple of 2-bytes
-        imm20: u32,
+        imm20: i32,
     },
 
     /// Make a service request to the execution environment
@@ -319,12 +321,35 @@ pub enum Instr {
     // TODO: System Instructions
     Wfi {},
     Mret {},
-    Csrrw {},
-    Csrrs {},
-    Csrrc {},
-    Csrrwi {},
-    Csrrsi {},
-    Csrrci {},
+
+    Csrrw {
+        rs1: Reg,
+        imm12: u32,
+    },
+
+    Csrrs {
+        rd: Reg,
+        rs1: Reg,
+        imm12: u32,
+    },
+
+    Csrrc {
+        rs1: Reg,
+    },
+
+    Csrrwi {
+        rd: Reg,
+    },
+
+    Csrrsi {
+        imm5: u8,
+        imm12: u32,
+    },
+
+    Csrrci {
+        imm5: u8,
+        imm12: u32,
+    },
 
     Hint {
         /// TODO: Encode hint instructions

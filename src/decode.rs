@@ -1,6 +1,8 @@
 #![deny(unreachable_patterns)]
 
 use crate::instr::{Instr, Reg};
+// use Instr::*;
+use Reg::*;
 
 use std::convert::TryInto;
 
@@ -20,7 +22,7 @@ impl Bits for u32 {
 }
 
 #[allow(unused_variables)]
-pub fn decode_opcode(w: u32) -> String {
+pub fn decode_opcode(w: u32) -> Option<Instr> {
     /*
       Different instructions may use different named fields in the enoding,
     and not all fields are always used. Many fields overlap.
@@ -70,11 +72,19 @@ pub fn decode_opcode(w: u32) -> String {
     let funct12 = w.bits(31, 20);
 
     // TODO: Not sure if these are always loaded the same way
-    let imm5 = 0;
-    let imm12 = 0;
-    let imm20 = 0;
+    let imm5: u8 = 0;
+    let imm12: i32 = 0;
+    let imm20: i32 = 0;
 
-    let o_instr: Option<Instr> = match (opcode, funct3) {
+    match (opcode, funct3) {
+        // Special values
+        _ if w == 0x0 => {
+            // The all-zero instruction is special-cased as illegal, so we handle
+            // it here like an instruction. For the rest of our decoding, we'll handle
+            // invalid instructions like an error.
+            Some(Instr::Illegal)
+        }
+
         // Load Instructions
         (0x03, 0x0) => Some(Instr::Lb { rd, rs1, imm12 }),
         (0x03, 0x1) => Some(Instr::Lh { rd, rs1, imm12 }),
@@ -141,25 +151,38 @@ pub fn decode_opcode(w: u32) -> String {
         (0x73, 0x0) if funct12 == 0x302 => Some(Instr::Wfi {}),
         (0x73, 0x0) if funct12 == 0x105 => Some(Instr::Mret {}),
 
-        (0x73, 0x1) => Some(Instr::Csrrw {}),
-        (0x73, 0x2) => Some(Instr::Csrrs {}),
-        (0x73, 0x3) => Some(Instr::Csrrc {}),
-        (0x73, 0x5) => Some(Instr::Csrrwi {}),
-        (0x73, 0x6) => Some(Instr::Csrrsi {}),
-        (0x73, 0x7) => Some(Instr::Csrrci {}),
+        (0x73, 0x1) => Some(Instr::Csrrw {
+            rs1,
+            imm12: imm12 as u32,
+        }),
+        (0x73, 0x2) => Some(Instr::Csrrs {
+            rd,
+            rs1,
+            imm12: imm12 as u32,
+        }),
+        (0x73, 0x3) => Some(Instr::Csrrc { rs1 }),
+        (0x73, 0x5) => Some(Instr::Csrrwi { rd }),
+        (0x73, 0x6) => Some(Instr::Csrrsi {
+            imm5,
+            imm12: imm12 as u32,
+        }),
+        (0x73, 0x7) => Some(Instr::Csrrci {
+            imm5,
+            imm12: imm12 as u32,
+        }),
         _ => None,
-    };
-
-    if let Some(instr) = o_instr {
-        format!("{:?}", instr)
-    } else {
-        format!("opcode= 0x{:x}, 0b_{:b}", opcode, opcode)
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+
+    // These asserts give us diffs when they fail.
+    // Import both eq and ne, even though we don't use ne yet, so that future
+    // tests don't accidentally miss this assert_ne and use std's instead.
+    #[allow(unused_imports)]
+    use pretty_assertions::{assert_eq, assert_ne};
 
     #[test]
     fn check_bits() {
@@ -221,5 +244,116 @@ mod test {
                 actual = actual
             );
         }
+    }
+
+    macro_rules! make_instr_test {
+        ( $( $test_name:ident : $le_bytes:expr => $expected:expr ),+ ) => {
+            $(
+                #[test]
+                fn $test_name() {
+                    let word = u32::from_le_bytes($le_bytes);
+                    assert_eq!(decode_opcode(word), Some($expected));
+                }
+            )+
+        };
+    }
+
+    make_instr_test! {
+        // The zero-word is an illegal instruction by design.
+        check_zero_word:                [0x00, 0x00, 0x00, 0x00] => Instr::Illegal,
+        check_unimp:                    [0x73, 0x10, 0x00, 0xc0] => Instr::Illegal,
+
+        // TODO: Check
+        //      add a, b, c
+        // making sure to use each of the 31 registers at least twice in different spots.
+        // Note: add zero, X, X is a "HINT" opcode
+
+        check_add_s0_sp_zero:           [0x33, 0x04, 0x01, 0x00] => Instr::Add { rd: S0, rs1: Sp, rs2: Zero, },
+        check_add_a2_a5_a1:             [0x33, 0x86, 0xb7, 0x00] => Instr::Add { rd: A2, rs1: A5, rs2: A1, },
+        check_add_t0_t0_t2:             [0xb3, 0x82, 0x72, 0x00] => Instr::Add { rd: T0, rs1: T0, rs2: T2, },
+
+        check_addi_sp_sp_64:            [0x13, 0x01, 0x01, 0x04] => Instr::Addi { rd: Sp, rs1: Sp, imm12: 64, },
+        check_addi_t1_t1_neg_1:         [0x13, 0x03, 0xf3, 0xff] => Instr::Addi { rd: T1, rs1: T1, imm12: -1, },
+        check_addi_a0_sp_32:            [0x13, 0x05, 0x01, 0x02] => Instr::Addi { rd: A0, rs1: Sp, imm12: 32, },
+        check_addi_a7_a0_neg_273:       [0x93, 0x08, 0xf5, 0xee] => Instr::Addi { rd: Zero, rs1: Zero, imm12: 0, },
+        check_addi_t0_t0_neg_2048:      [0x93, 0x82, 0x02, 0x80] => Instr::Addi { rd: Zero, rs1: Zero, imm12: 0, },
+
+        check_and_a0_a0_a1:             [0x33, 0x75, 0xb5, 0x00] => Instr::And { rd: A0, rs1: A0, rs2: A1 },
+
+        check_andi_a2_a2_1:             [0x13, 0x76, 0x16, 0x00] => Instr::Andi { rd: A2, rs1: A2, imm12: 1 },
+
+        check_auipc_sp_4:               [0x17, 0x41, 0x00, 0x00] => Instr::Auipc { rd: Sp, imm20: 4 },
+        check_auipc_gp_1:               [0x97, 0x11, 0x00, 0x00] => Instr::Auipc { rd: Gp, imm20: 1 },
+
+        check_beq_a0_zero_12:           [0x63, 0x06, 0x05, 0x00] => Instr::Beq { rs1: A0, rs2: Zero, imm12: 12 },
+        check_beq_a1_a0_20:             [0x63, 0xda, 0xa5, 0x00] => Instr::Bge { rs1: A1, rs2: A0, imm12: 20 },
+
+        check_bgeu_a0_a1_36:            [0x63, 0x72, 0xb5, 0x02] => Instr::Bgeu { rs1: A0, rs2: A1, imm12: 36 },
+
+        check_bltu_a1_a0_neg_16:        [0xe3, 0xe8, 0xa5, 0xfe] => Instr::Bltu { rs1: A1, rs2: A0, imm12: -16 },
+
+        bne_t3_t1_neg_64:               [0xe3, 0x10, 0x6e, 0xfc] => Instr::Bne { rs1: T3, rs2: T1, imm12: -64 },
+
+        // ==== TODO: All of the Csrr tests and decoding is incomplete
+        // Csrr a0, mcause
+        check_csrr_a0_mcause: [0x73, 0x25, 0x20, 0x34] => Instr::Csrrc { rs1: Zero },
+
+        // Csrr a0, mhartid
+        check_cssr_a0_mhartid: [0x73, 0x25, 0x40, 0xf1] => Instr::Csrrc { rs1: Zero },
+
+        // Csrw mtvec, t0
+        check_csrw_mtvec_t0: [0x73, 0x90, 0x52, 0x30] => Instr::Csrrw { rs1: T0, imm12: 0 },
+
+        // Csrwi  mie, 0
+        check_csrwi_mie_0: [0x73, 0x50, 0x40, 0x30] => Instr::Csrrwi { rd: Zero },
+
+        // Csrwi  mip, 0
+        check_csrwi_mip_0: [0x73, 0x50, 0x40, 0x34] => Instr::Csrrwi { rd: Zero },
+
+        // Fence  rw, rw
+        check_fence_rw_rw: [0x0f, 0x00, 0x30, 0x03] => Instr::Fence {
+            rd: Zero, rs1: Zero,
+            successor: 0b_1100, predecessor: 0b_1100,
+            fm: 0
+        },
+
+        check_j_0:                      [0x6f, 0x00, 0x00, 0x00] => Instr::Jal { rd: Zero, imm20: 0 },
+        check_j_900:                    [0x6f, 0x00, 0xc0, 0x00] => Instr::Jal { rd: Zero, imm20: 900 },
+        check_j_neg_96:                 [0x6f, 0xf0, 0x9f, 0xff] => Instr::Jal {rd : Zero, imm20: -96 },
+
+        check_jal_76:                   [0xef, 0x00, 0xc0, 0x04] => Instr::Jal { rd: Zero, imm20: 76 },
+        check_jalr_a0:                  [0xe7, 0x00, 0x05, 0x00] => Instr::Jalr { rd: Zero, rs1: Zero, imm12: 0 },
+        check_jalr_728_ra:              [0xe7, 0x80, 0x80, 0x2d] => Instr::Jalr { rd: Zero, rs1: Zero, imm12: 728 },
+
+        check_lui_a0_0:                 [0x37, 0x05, 0x00, 0x00] => Instr::Lui { rd: A0, imm20: 0 },
+        check_lui_a0_2:                 [0x37, 0x25, 0x00, 0x00] => Instr::Lui { rd: A0, imm20: 2 },
+        check_lui_a0_912092:            [0x37, 0xc5, 0xad, 0xde] => Instr::Lui { rd: A0, imm20: 912092 },
+        check_lui_ra_0:                 [0xb7, 0x00, 0x00, 0x00] => Instr::Lui { rd: Ra, imm20: 0 },
+        check_lui_t0_0:                 [0xb7, 0x02, 0x00, 0x00] => Instr::Lui { rd: T0, imm20: 0 },
+        check_lui_a1_0:                 [0xb7, 0x05, 0x00, 0x00] => Instr::Lui { rd: A1, imm20: 0 },
+        check_lui_a1_674490:            [0xb7, 0xa5, 0xab, 0xa4] => Instr::Lui { rd: A1, imm20: 674490 },
+
+        check_lw_t1_8_sp:               [0x03, 0x23, 0x81, 0x00] => Instr::Lw { rd: T1, rs1: Sp, imm12: 8},
+        check_lw_a6_56_sp:              [0x03, 0x28, 0x81, 0x03] => Instr::Lw { rd: T1, rs1: Sp, imm12: 8},
+        check_lw_t6_28_sp:              [0x83, 0x2f, 0xc1, 0x01] => Instr::Lw { rd: T1, rs1: Sp, imm12: 8},
+
+        // Mret
+        check_mret: [0x73, 0x00, 0x20, 0x30] => Instr::Mret {},
+
+        // Ret
+        // check_ret: [0x67, 0x80, 0x00, 0x00] => Instr::Ret {},
+
+        check_sb_a2_a1_0: [0x23, 0x80, 0xc5, 0x00] => Instr::Sb { rs1: A2, rs2: A1, imm12: 0 },
+        check_sw_a3_sp_44: [0x23, 0x26, 0xd1, 0x02] => Instr::Sw { rs1: A3, rs2: Sp, imm12: 44},
+
+        check_sllii_a0_a0_2: [0x13, 0x15, 0x25, 0x00] => Instr::Slli { rd: A0, rs1: A0, imm5: 2 },
+
+        check_sub_sp_sp_t0: [0x33, 0x01, 0x51, 0x40] => Instr::Sub { rd: Sp, rs1: Sp, rs2: T0 },
+
+        // Wfi
+        check_wfi: [0x73, 0x00, 0x50, 0x10] => Instr::Wfi {},
+
+        // Xor  a2, a1, a3
+        check_xor_a2_a1_a3: [0x33, 0xc6, 0xd5, 0x00] => Instr::Xor { rd: A2, rs1: A1, rs2: A3 }
     }
 }

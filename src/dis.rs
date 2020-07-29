@@ -69,8 +69,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         // Instruction as text
-        let instr = riscv_asm::decode_opcode(word);
-        print!("   {:<25}", instr);
+        let o_instr = riscv_asm::decode_opcode(word);
+        let instr_text = if let Some(instr) = o_instr {
+            format!("{:?}", instr)
+        } else {
+            format!("0x{:08}, 0b_{:b}", word, word)
+        };
+
+        print!("   {:<25}", instr_text);
 
         println!();
     }

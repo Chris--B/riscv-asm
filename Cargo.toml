@@ -17,3 +17,6 @@ path = "src/dis.rs"
 [dependencies]
 goblin = "0.2"
 gumdrop = "0.8"
+
+[dev-dependencies]
+pretty_assertions = " 0.6"
