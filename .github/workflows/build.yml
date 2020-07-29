@@ -1,7 +1,5 @@
-name: CI
+name: Build
 
-# Controls when the action will run. Triggers the workflow on push or pull request
-# events but only for the main branch
 on:
   push:
     branches: [ main ]
@@ -13,7 +11,7 @@ on:
     branches: [ main ]
 
 jobs:
-  full-check:
+  all-build:
     strategy:
       matrix:
         platform: [ubuntu-latest, macos-latest, windows-latest]
@@ -37,39 +35,8 @@ jobs:
 
       - uses: actions-rs/cargo@v1
         with:
-          command: test
-          args: --all
-
-      - uses: actions-rs/cargo@v1
-        with:
           command: fmt
           args: --all -- --check
-
-      - uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: -- -D warnings
-
-  quick-check:
-    strategy:
-      matrix:
-        platform: [ubuntu-latest, macos-latest, windows-latest]
-
-    runs-on: ${{ matrix.platform }}
-    steps:
-      - uses: actions/checkout@v2
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-          components: rustfmt, clippy
-
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --all
 
       - uses: actions-rs/cargo@v1
         with:
