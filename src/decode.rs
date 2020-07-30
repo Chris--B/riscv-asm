@@ -344,6 +344,19 @@ mod test {
         );
     }
 
+    // This test takes takes too long, while the rest are instant.
+    /// (~15 seconds on release and ~1238 seconds (yes really) on debug)
+    // Until this is sped up, mark it as ignored. We can run it manually:
+    //      time cargo test --release brute -- --ignored
+    #[test]
+    #[ignore]
+    fn brute_force_decode() {
+        // Test every word to make sure that we don't panic :)
+        for word in 0..=u32::MAX {
+            let _ = decode_opcode(word);
+        }
+    }
+
     macro_rules! make_instr_test {
         ( $( $test_name:ident : $le_bytes:expr => $expected:expr ),+ ) => {
             $(
