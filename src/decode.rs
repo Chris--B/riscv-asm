@@ -7,16 +7,42 @@ use std::convert::TryInto;
 
 /// Internal trait to simplify bit operations
 trait Bits {
+    type Signed;
+
+    /// Extract the bit at index `idx`
+    fn bit(&self, idx: u8) -> Self;
+
     /// Extract the bits `lo` through `hi`, inclusive, and then shift them to the 0 position.
     fn bits(&self, hi: u8, lo: u8) -> Self;
+
+    /// Sign extend using the bit at index `hi` as the most significant bit.
+    ///
+    /// All bits in locations >= `hi` are replaced with the bit at `hi`
+    fn sign_ext(&self, hi: u8) -> Self::Signed;
 }
 
 impl Bits for u32 {
+    type Signed = i32;
+
+    fn bit(&self, idx: u8) -> Self {
+        let idx = idx as u32;
+        (self >> idx) & 0x1
+    }
+
     fn bits(&self, hi: u8, lo: u8) -> Self {
         let hi: u32 = hi as u32;
         let mask = u32::MAX >> (31 - hi);
 
         (self & mask) >> lo
+    }
+
+    fn sign_ext(&self, hi: u8) -> Self::Signed {
+        let mask = if self.bit(hi) == 0 {
+            0
+        } else {
+            u32::MAX << (hi + 1)
+        };
+        (self | mask) as Self::Signed
     }
 }
 
@@ -74,6 +100,27 @@ pub fn decode_opcode(w: u32) -> Option<Instr> {
     let imm5: u8 = 0;
     let imm12: i32 = 0;
     let imm20: i32 = 0;
+
+    // TODO: Sign extend
+    // R-type instructions do not have an immediate encoded
+    let _r_imm: ();
+    let i_imm: u32 = w.bits(31, 20);
+    let s_imm: u32 = (w.bits(31, 25) << 5) | w.bits(11, 7);
+    let b_imm: u32 = (w.bit(31) << 12)      // ┌ Note: lsb is always 0!
+        | (w.bit(7) << 11)                  // │
+        | (w.bits(30, 25) << 5)             // │
+        | (w.bits(11, 8) << 1)              // ┘
+    ;
+    let u_imm: u32 = (w.bits(31, 20) << 20) // ┌ Note: 12 low bits of 0!
+        | (w.bits(19, 12) << 12)            // ┘
+    ;
+    let j_imm: u32 = (w.bit(31) << 20)      // ┌ Note: lsb is always 0!
+        | (w.bits(19, 12) << 12)            // │
+        | (w.bit(20) << 11)                 // │
+        | (w.bits(30, 21) << 1)             // ┘
+    ;
+
+    let b_imm_s: i32 = b_imm.sign_ext(12);
 
     match (opcode, funct3) {
         // Special values
@@ -245,7 +292,32 @@ mod test {
                 label_actual = label_actual,
                 actual = actual
             );
+
+            if hi == lo {
+                assert_eq!(actual, W.bit(hi));
+            }
         }
+    }
+
+    #[test]
+    fn check_bits_sign_ext() {
+        assert_eq!(
+            0b_1.sign_ext(0),                                      //
+            0b_1111_1111_1111_1111_1111_1111_1111_1111_u32 as i32, // Expected
+        );
+        assert_eq!(
+            0b_0100_0000_0000_1111_u32.sign_ext(14),               //
+            0b_1111_1111_1111_1111_1100_0000_0000_1111_u32 as i32, // Expected
+        );
+
+        assert_eq!(
+            0b_0.sign_ext(0), //
+            0b_0_u32 as i32,  // Expected
+        );
+        assert_eq!(
+            0b_0100_0000_0000_1111_u32.sign_ext(15), //
+            0b_0100_0000_0000_1111_u32 as i32,       // Expected
+        );
     }
 
     macro_rules! make_instr_test {
