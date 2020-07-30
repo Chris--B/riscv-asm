@@ -181,12 +181,36 @@ pub fn decode_opcode(w: u32) -> Option<Instr> {
 
         (0x37, _) => Some(Lui { rd, imm20 }),
 
-        (0x63, 0x0) => Some(Beq { rs1, rs2, imm12 }),
-        (0x63, 0x1) => Some(Bne { rs1, rs2, imm12 }),
-        (0x63, 0x4) => Some(Blt { rs1, rs2, imm12 }),
-        (0x63, 0x5) => Some(Bge { rs1, rs2, imm12 }),
-        (0x63, 0x6) => Some(Bltu { rs1, rs2, imm12 }),
-        (0x63, 0x7) => Some(Bgeu { rs1, rs2, imm12 }),
+        (0x63, 0x0) => Some(Beq {
+            rs1,
+            rs2,
+            imm: b_imm_s,
+        }),
+        (0x63, 0x1) => Some(Bne {
+            rs1,
+            rs2,
+            imm: b_imm_s,
+        }),
+        (0x63, 0x4) => Some(Blt {
+            rs1,
+            rs2,
+            imm: b_imm_s,
+        }),
+        (0x63, 0x5) => Some(Bge {
+            rs1,
+            rs2,
+            imm: b_imm_s,
+        }),
+        (0x63, 0x6) => Some(Bltu {
+            rs1,
+            rs2,
+            imm: b_imm_s,
+        }),
+        (0x63, 0x7) => Some(Bgeu {
+            rs1,
+            rs2,
+            imm: b_imm_s,
+        }),
 
         (0x67, 0x0) => Some(Jalr { rd, rs1, imm12 }),
 
@@ -359,14 +383,14 @@ mod test {
         check_auipc_sp_4:               [0x17, 0x41, 0x00, 0x00] => Auipc { rd: Sp, imm20: 4 },
         check_auipc_gp_1:               [0x97, 0x11, 0x00, 0x00] => Auipc { rd: Gp, imm20: 1 },
 
-        check_beq_a0_zero_12:           [0x63, 0x06, 0x05, 0x00] => Beq { rs1: A0, rs2: Zero, imm12: 12 },
-        check_beq_a1_a0_20:             [0x63, 0xda, 0xa5, 0x00] => Bge { rs1: A1, rs2: A0, imm12: 20 },
+        check_beq_a0_zero_12:           [0x63, 0x06, 0x05, 0x00] => Beq { rs1: A0, rs2: Zero, imm: 12 },
+        check_beq_a1_a0_20:             [0x63, 0xda, 0xa5, 0x00] => Bge { rs1: A1, rs2: A0, imm: 20 },
 
-        check_bgeu_a0_a1_36:            [0x63, 0x72, 0xb5, 0x02] => Bgeu { rs1: A0, rs2: A1, imm12: 36 },
+        check_bgeu_a0_a1_36:            [0x63, 0x72, 0xb5, 0x02] => Bgeu { rs1: A0, rs2: A1, imm: 36 },
 
-        check_bltu_a1_a0_neg_16:        [0xe3, 0xe8, 0xa5, 0xfe] => Bltu { rs1: A1, rs2: A0, imm12: -16 },
+        check_bltu_a1_a0_neg_16:        [0xe3, 0xe8, 0xa5, 0xfe] => Bltu { rs1: A1, rs2: A0, imm: -16 },
 
-        bne_t3_t1_neg_64:               [0xe3, 0x10, 0x6e, 0xfc] => Bne { rs1: T3, rs2: T1, imm12: -64 },
+        check_bne_t3_t1_neg_64:          [0xe3, 0x10, 0x6e, 0xfc] => Bne { rs1: T3, rs2: T1, imm: -64 },
 
         // ==== TODO: All of the Csrr tests and decoding is incomplete
         // Csrr a0, mcause

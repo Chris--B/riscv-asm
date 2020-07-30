@@ -248,32 +248,32 @@ pub enum Instr {
     Beq {
         rs1: Reg,
         rs2: Reg,
-        imm12: i32,
+        imm: i32,
     },
     Bne {
         rs1: Reg,
         rs2: Reg,
-        imm12: i32,
+        imm: i32,
     },
     Blt {
         rs1: Reg,
         rs2: Reg,
-        imm12: i32,
+        imm: i32,
     },
     Bge {
         rs1: Reg,
         rs2: Reg,
-        imm12: i32,
+        imm: i32,
     },
     Bltu {
         rs1: Reg,
         rs2: Reg,
-        imm12: i32,
+        imm: i32,
     },
     Bgeu {
         rs1: Reg,
         rs2: Reg,
-        imm12: i32,
+        imm: i32,
     },
 
     /// Jumps to a target address and saves the return address
