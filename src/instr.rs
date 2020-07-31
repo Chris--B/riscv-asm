@@ -155,9 +155,14 @@ pub enum Instr {
         rs1: Reg,
         imm12: i32,
     },
+    /// AUIPC (add upper immediate to pc) is used to build pc-relative addresses
+    /// and uses the U-type format.
+    /// AUIPC forms a 32-bit offset from the 20-bit U-immediate, filling in the
+    /// lowest 12 bits with zeros, adds this offset to the address of the AUIPC
+    /// instruction, then places the result in register rd.
     Auipc {
         rd: Reg,
-        imm20: i32,
+        imm: u32,
     },
     Sb {
         /// Base address

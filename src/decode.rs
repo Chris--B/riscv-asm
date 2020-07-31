@@ -200,7 +200,7 @@ pub fn decode_opcode(w: u32) -> Option<Instr> {
         (0x13, 0x6) => Some(Ori { rd, rs1, imm12 }),
         (0x13, 0x7) => Some(Andi { rd, rs1, imm12 }),
 
-        (0x17, _) => Some(Auipc { rd, imm20 }),
+        (0x17, _) => Some(Auipc { rd, imm: u_imm }),
 
         // // Store Instructions
         (0x23, 0x0) => Some(Sb { rs1, rs2, imm12 }),
@@ -441,8 +441,8 @@ mod test {
 
         check_andi_a2_a2_1:             [0x13, 0x76, 0x16, 0x00] => Andi { rd: A2, rs1: A2, imm12: 1 },
 
-        check_auipc_sp_4:               [0x17, 0x41, 0x00, 0x00] => Auipc { rd: Sp, imm20: 4 },
-        check_auipc_gp_1:               [0x97, 0x11, 0x00, 0x00] => Auipc { rd: Gp, imm20: 1 },
+        check_auipc_sp_4:               [0x17, 0x41, 0x00, 0x00] => Auipc { rd: Sp, imm: 4 },
+        check_auipc_gp_1:               [0x97, 0x11, 0x00, 0x00] => Auipc { rd: Gp, imm: 1 },
 
         check_beq_a0_zero_12:           [0x63, 0x06, 0x05, 0x00] => Beq { rs1: A0, rs2: Zero, imm: 12 },
         check_beq_a1_a0_20:             [0x63, 0xda, 0xa5, 0x00] => Bge { rs1: A1, rs2: A0, imm: 20 },
