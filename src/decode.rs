@@ -207,10 +207,26 @@ pub fn decode_opcode(w: u32) -> Option<Instr> {
         (0x17, _) => Some(Auipc { rd, imm: u_imm }),
 
         // // Store Instructions
-        (0x23, 0x0) => Some(Sb { rs1, rs2, imm12 }),
-        (0x23, 0x1) => Some(Sh { rs1, rs2, imm12 }),
-        (0x23, 0x2) => Some(Sw { rs1, rs2, imm12 }),
-        (0x23, 0x3) => Some(Sd { rs1, rs2, imm12 }),
+        (0x23, 0x0) => Some(Sb {
+            rs1,
+            rs2,
+            imm: s_imm,
+        }),
+        (0x23, 0x1) => Some(Sh {
+            rs1,
+            rs2,
+            imm: s_imm,
+        }),
+        (0x23, 0x2) => Some(Sw {
+            rs1,
+            rs2,
+            imm: s_imm,
+        }),
+        (0x23, 0x3) => Some(Sd {
+            rs1,
+            rs2,
+            imm: s_imm,
+        }),
 
         (0x33, 0x0) if funct7 == 0x00 => Some(Add { rd, rs1, rs2 }),
         (0x33, 0x0) if funct7 == 0x20 => Some(Sub { rd, rs1, rs2 }),
@@ -509,8 +525,8 @@ mod test {
         // Ret
         // check_ret:                      [0x67, 0x80, 0x00, 0x00] => Ret {},
 
-        check_sb_a2_a1_0:               [0x23, 0x80, 0xc5, 0x00] => Sb { rs1: A2, rs2: A1, imm12: 0 },
-        check_sw_a3_sp_44:              [0x23, 0x26, 0xd1, 0x02] => Sw { rs1: A3, rs2: Sp, imm12: 44},
+        check_sb_a2_a1_0:               [0x23, 0x80, 0xc5, 0x00] => Sb { rs1: A1, rs2: A2, imm: 0 },
+        check_sw_a3_sp_44:              [0x23, 0x26, 0xd1, 0x02] => Sw { rs1: Sp, rs2: A3, imm: 44},
 
         check_sllii_a0_a0_2:            [0x13, 0x15, 0x25, 0x00] => Slli { rd: A0, rs1: A0, imm5: 2 },
 

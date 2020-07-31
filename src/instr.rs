@@ -170,7 +170,7 @@ pub enum Instr {
         /// Source register
         rs2: Reg,
         /// Offset
-        imm12: i32,
+        imm: i32,
     },
     Sh {
         /// Base address
@@ -178,7 +178,7 @@ pub enum Instr {
         /// Source register
         rs2: Reg,
         /// Offset
-        imm12: i32,
+        imm: i32,
     },
     Sw {
         /// Base address
@@ -186,7 +186,7 @@ pub enum Instr {
         /// Source register
         rs2: Reg,
         /// Offset
-        imm12: i32,
+        imm: i32,
     },
     Sd {
         /// Base address
@@ -194,7 +194,7 @@ pub enum Instr {
         /// Source register
         rs2: Reg,
         /// Offset
-        imm12: i32,
+        imm: i32,
     },
     Add {
         rd: Reg,
