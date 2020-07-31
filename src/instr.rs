@@ -243,7 +243,7 @@ pub enum Instr {
     },
     Lui {
         rd: Reg,
-        imm20: i32,
+        imm: u32,
     },
     Beq {
         rs1: Reg,

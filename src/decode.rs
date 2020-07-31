@@ -89,10 +89,10 @@ pub fn decode_opcode(w: u32) -> Option<Instr> {
     // We extract each field value here, then reference them in the
     // larger match block below.
     let opcode = w.bits(6, 0);
-    let rd: Reg = w.bits(11, 7).try_into().unwrap_or_default();
     let funct3 = w.bits(14, 12);
-    let rs1: Reg = w.bits(19, 15).try_into().unwrap_or_default();
-    let rs2: Reg = w.bits(24, 20).try_into().unwrap_or_default();
+    let rd: Reg = w.bits(11, 7).try_into().unwrap_or_default();
+    let rs1: Reg = w.bits(24, 20).try_into().unwrap_or_default();
+    let rs2: Reg = w.bits(19, 15).try_into().unwrap_or_default();
     let funct7 = w.bits(31, 25);
     let funct12 = w.bits(31, 20);
 
@@ -101,26 +101,40 @@ pub fn decode_opcode(w: u32) -> Option<Instr> {
     let imm12: i32 = 0;
     let imm20: i32 = 0;
 
-    // TODO: Sign extend
     // R-type instructions do not have an immediate encoded
     let _r_imm: ();
-    let i_imm: u32 = w.bits(31, 20);
-    let s_imm: u32 = (w.bits(31, 25) << 5) | w.bits(11, 7);
-    let b_imm: u32 = (w.bit(31) << 12)      // ┌ Note: lsb is always 0!
+
+    let i_imm: i32 = w.bits(31, 20).sign_ext(11);
+
+    let s_imm: i32 = ((w.bits(31, 25) << 5) | w.bits(11, 7)).sign_ext(11);
+
+    #[rustfmt::skip]
+    let b_imm: i32 = (
+        (w.bit(31) << 12)                   // ┌ Note: lsb is always 0!
         | (w.bit(7) << 11)                  // │
         | (w.bits(30, 25) << 5)             // │
         | (w.bits(11, 8) << 1)              // ┘
-    ;
-    let u_imm: u32 = (w.bits(31, 20) << 20) // ┌ Note: 12 low bits of 0!
-        | (w.bits(19, 12) << 12)            // ┘
-    ;
-    let j_imm: u32 = (w.bit(31) << 20)      // ┌ Note: lsb is always 0!
+    )
+    .sign_ext(12);
+
+    // U-type encodings may shift this by 12, or may keep it as-is but
+    // reinterpret the bits as the upper 20-bits of a word.
+    let u_imm: u32 = w.bits(31, 12);
+
+    #[rustfmt::skip]
+    let j_imm: i32 = (
+        (w.bit(31) << 20)                   // ┌ Note: lsb is always 0!
         | (w.bits(19, 12) << 12)            // │
         | (w.bit(20) << 11)                 // │
         | (w.bits(30, 21) << 1)             // ┘
-    ;
+    )
+    .sign_ext(20);
 
-    let b_imm_s: i32 = b_imm.sign_ext(12);
+    dbg!(i_imm);
+    dbg!(s_imm);
+    dbg!(b_imm);
+    dbg!(u_imm);
+    dbg!(j_imm);
 
     match (opcode, funct3) {
         // Special values
@@ -132,13 +146,41 @@ pub fn decode_opcode(w: u32) -> Option<Instr> {
         }
 
         // Load Instructions
-        (0x03, 0x0) => Some(Lb { rd, rs1, imm12 }),
-        (0x03, 0x1) => Some(Lh { rd, rs1, imm12 }),
-        (0x03, 0x2) => Some(Lw { rd, rs1, imm12 }),
-        (0x03, 0x3) => Some(Ld { rd, rs1, imm12 }),
-        (0x03, 0x4) => Some(Lbu { rd, rs1, imm12 }),
-        (0x03, 0x5) => Some(Lhu { rd, rs1, imm12 }),
-        (0x03, 0x6) => Some(Lwu { rd, rs1, imm12 }),
+        (0x03, 0x0) => Some(Lb {
+            rd,
+            rs1,
+            imm12: i_imm,
+        }),
+        (0x03, 0x1) => Some(Lh {
+            rd,
+            rs1,
+            imm12: i_imm,
+        }),
+        (0x03, 0x2) => Some(Lw {
+            rd,
+            rs1,
+            imm12: i_imm,
+        }),
+        (0x03, 0x3) => Some(Ld {
+            rd,
+            rs1,
+            imm12: i_imm,
+        }),
+        (0x03, 0x4) => Some(Lbu {
+            rd,
+            rs1,
+            imm12: i_imm,
+        }),
+        (0x03, 0x5) => Some(Lhu {
+            rd,
+            rs1,
+            imm12: i_imm,
+        }),
+        (0x03, 0x6) => Some(Lwu {
+            rd,
+            rs1,
+            imm12: i_imm,
+        }),
 
         // Fences
         (0x0f, 0x0) => Some(Fence {
@@ -179,42 +221,46 @@ pub fn decode_opcode(w: u32) -> Option<Instr> {
         (0x33, 0x6) => Some(Or { rd, rs1, rs2 }),
         (0x33, 0x7) => Some(And { rd, rs1, rs2 }),
 
-        (0x37, _) => Some(Lui { rd, imm20 }),
+        (0x37, _) => Some(Lui { rd, imm: u_imm }),
 
         (0x63, 0x0) => Some(Beq {
             rs1,
             rs2,
-            imm: b_imm_s,
+            imm: b_imm,
         }),
         (0x63, 0x1) => Some(Bne {
             rs1,
             rs2,
-            imm: b_imm_s,
+            imm: b_imm,
         }),
         (0x63, 0x4) => Some(Blt {
             rs1,
             rs2,
-            imm: b_imm_s,
+            imm: b_imm,
         }),
         (0x63, 0x5) => Some(Bge {
             rs1,
             rs2,
-            imm: b_imm_s,
+            imm: b_imm,
         }),
         (0x63, 0x6) => Some(Bltu {
             rs1,
             rs2,
-            imm: b_imm_s,
+            imm: b_imm,
         }),
         (0x63, 0x7) => Some(Bgeu {
             rs1,
             rs2,
-            imm: b_imm_s,
+            imm: b_imm,
         }),
 
-        (0x67, 0x0) => Some(Jalr { rd, rs1, imm12 }),
+        (0x67, 0x0) => Some(Jalr {
+            rd,
+            rs1,
+            imm12: b_imm,
+        }),
 
-        (0x6f, _) => Some(Jal { rd, imm20 }),
+        (0x6f, _) => Some(Jal { rd, imm20: b_imm }),
 
         (0x73, 0x0) if funct7 == 0x0 => Some(Ecall { rd, rs1 }),
         (0x73, 0x0) if funct7 == 0x1 => Some(Ebreak { rd, rs1 }),
@@ -326,21 +372,25 @@ mod test {
     #[test]
     fn check_bits_sign_ext() {
         assert_eq!(
-            0b_1.sign_ext(0),                                      //
+            0b_0000_0000_0000_0000_0000_0000_0000_0001.sign_ext(0),
+            //                                       ^~~~~~~~~~~^
             0b_1111_1111_1111_1111_1111_1111_1111_1111_u32 as i32, // Expected
         );
         assert_eq!(
-            0b_0100_0000_0000_1111_u32.sign_ext(14),               //
+            0b_0000_0000_0000_0000_0100_0000_0000_1111_u32.sign_ext(14),
+            //                      ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
             0b_1111_1111_1111_1111_1100_0000_0000_1111_u32 as i32, // Expected
         );
 
         assert_eq!(
-            0b_0.sign_ext(0), //
-            0b_0_u32 as i32,  // Expected
+            0b_0.sign_ext(0),
+            // ^~~~~~~~~~~^
+            0b_0_u32 as i32, // Expected
         );
         assert_eq!(
-            0b_0100_0000_0000_1111_u32.sign_ext(15), //
-            0b_0100_0000_0000_1111_u32 as i32,       // Expected
+            0b_0100_0000_0000_1111_u32.sign_ext(15),
+            // ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+            0b_0100_0000_0000_1111_u32 as i32, // Expected
         );
     }
 
@@ -436,13 +486,14 @@ mod test {
         check_jalr_a0:                  [0xe7, 0x00, 0x05, 0x00] => Jalr { rd: Zero, rs1: Zero, imm12: 0 },
         check_jalr_728_ra:              [0xe7, 0x80, 0x80, 0x2d] => Jalr { rd: Zero, rs1: Zero, imm12: 728 },
 
-        check_lui_a0_0:                 [0x37, 0x05, 0x00, 0x00] => Lui { rd: A0, imm20: 0 },
-        check_lui_a0_2:                 [0x37, 0x25, 0x00, 0x00] => Lui { rd: A0, imm20: 2 },
-        check_lui_a0_912092:            [0x37, 0xc5, 0xad, 0xde] => Lui { rd: A0, imm20: 912092 },
-        check_lui_ra_0:                 [0xb7, 0x00, 0x00, 0x00] => Lui { rd: Ra, imm20: 0 },
-        check_lui_t0_0:                 [0xb7, 0x02, 0x00, 0x00] => Lui { rd: T0, imm20: 0 },
-        check_lui_a1_0:                 [0xb7, 0x05, 0x00, 0x00] => Lui { rd: A1, imm20: 0 },
-        check_lui_a1_674490:            [0xb7, 0xa5, 0xab, 0xa4] => Lui { rd: A1, imm20: 674490 },
+        check_lui_a0_0:                 [0x37, 0x05, 0x00, 0x00] => Lui { rd: A0, imm: 0 },
+        check_lui_a0_1:                 [0x37, 0x15, 0x00, 0x00] => Lui { rd: A0, imm: 1 },
+        check_lui_a0_2:                 [0x37, 0x25, 0x00, 0x00] => Lui { rd: A0, imm: 2 },
+        check_lui_a0_912092:            [0x37, 0xc5, 0xad, 0xde] => Lui { rd: A0, imm: 912092 },
+        check_lui_ra_0:                 [0xb7, 0x00, 0x00, 0x00] => Lui { rd: Ra, imm: 0 },
+        check_lui_t0_0:                 [0xb7, 0x02, 0x00, 0x00] => Lui { rd: T0, imm: 0 },
+        check_lui_a1_0:                 [0xb7, 0x05, 0x00, 0x00] => Lui { rd: A1, imm: 0 },
+        check_lui_a1_674490:            [0xb7, 0xa5, 0xab, 0xa4] => Lui { rd: A1, imm: 674490 },
 
         check_lw_t1_8_sp:               [0x03, 0x23, 0x81, 0x00] => Lw { rd: T1, rs1: Sp, imm12: 8},
         check_lw_a6_56_sp:              [0x03, 0x28, 0x81, 0x03] => Lw { rd: T1, rs1: Sp, imm12: 8},
