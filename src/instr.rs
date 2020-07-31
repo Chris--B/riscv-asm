@@ -54,37 +54,37 @@ pub enum Instr {
     Lb {
         rd: Reg,
         rs1: Reg,
-        imm12: i32,
+        imm: i32,
     },
     Lh {
         rd: Reg,
         rs1: Reg,
-        imm12: i32,
+        imm: i32,
     },
     Lw {
         rd: Reg,
         rs1: Reg,
-        imm12: i32,
+        imm: i32,
     },
     Ld {
         rd: Reg,
         rs1: Reg,
-        imm12: i32,
+        imm: i32,
     },
     Lbu {
         rd: Reg,
         rs1: Reg,
-        imm12: i32,
+        imm: u32,
     },
     Lhu {
         rd: Reg,
         rs1: Reg,
-        imm12: i32,
+        imm: u32,
     },
     Lwu {
         rd: Reg,
         rs1: Reg,
-        imm12: i32,
+        imm: u32,
     },
     Fence {
         rd: Reg,

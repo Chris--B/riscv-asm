@@ -143,37 +143,37 @@ pub fn decode_opcode(w: u32) -> Option<Instr> {
         (0x03, 0x0) => Some(Lb {
             rd,
             rs1,
-            imm12: i_imm,
+            imm: i_imm,
         }),
         (0x03, 0x1) => Some(Lh {
             rd,
             rs1,
-            imm12: i_imm,
+            imm: i_imm,
         }),
         (0x03, 0x2) => Some(Lw {
             rd,
             rs1,
-            imm12: i_imm,
+            imm: i_imm,
         }),
         (0x03, 0x3) => Some(Ld {
             rd,
             rs1,
-            imm12: i_imm,
+            imm: i_imm,
         }),
         (0x03, 0x4) => Some(Lbu {
             rd,
             rs1,
-            imm12: i_imm,
+            imm: i_imm as u32,
         }),
         (0x03, 0x5) => Some(Lhu {
             rd,
             rs1,
-            imm12: i_imm,
+            imm: i_imm as u32,
         }),
         (0x03, 0x6) => Some(Lwu {
             rd,
             rs1,
-            imm12: i_imm,
+            imm: i_imm as u32,
         }),
 
         // Fences
@@ -515,9 +515,9 @@ mod test {
         check_lui_a1_0:                 [0xb7, 0x05, 0x00, 0x00] => Lui { rd: A1, imm: 0 },
         check_lui_a1_674490:            [0xb7, 0xa5, 0xab, 0xa4] => Lui { rd: A1, imm: 674490 },
 
-        check_lw_t1_8_sp:               [0x03, 0x23, 0x81, 0x00] => Lw { rd: T1, rs1: Sp, imm12: 8},
-        check_lw_a6_56_sp:              [0x03, 0x28, 0x81, 0x03] => Lw { rd: T1, rs1: Sp, imm12: 8},
-        check_lw_t6_28_sp:              [0x83, 0x2f, 0xc1, 0x01] => Lw { rd: T1, rs1: Sp, imm12: 8},
+        check_lw_t1_8_sp:               [0x03, 0x23, 0x81, 0x00] => Lw { rd: T1, rs1: Sp, imm: 8},
+        check_lw_a6_56_sp:              [0x03, 0x28, 0x81, 0x03] => Lw { rd: A6, rs1: Sp, imm: 56},
+        check_lw_t6_28_sp:              [0x83, 0x2f, 0xc1, 0x01] => Lw { rd: T6, rs1: Sp, imm: 28},
 
         // Mret
         check_mret:                     [0x73, 0x00, 0x20, 0x30] => Mret {},
