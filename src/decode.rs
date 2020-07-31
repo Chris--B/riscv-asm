@@ -91,8 +91,8 @@ pub fn decode_opcode(w: u32) -> Option<Instr> {
     let opcode = w.bits(6, 0);
     let funct3 = w.bits(14, 12);
     let rd: Reg = w.bits(11, 7).try_into().unwrap_or_default();
-    let rs1: Reg = w.bits(24, 20).try_into().unwrap_or_default();
-    let rs2: Reg = w.bits(19, 15).try_into().unwrap_or_default();
+    let rs2: Reg = w.bits(24, 20).try_into().unwrap_or_default();
+    let rs1: Reg = w.bits(19, 15).try_into().unwrap_or_default();
     let funct7 = w.bits(31, 25);
     let funct12 = w.bits(31, 20);
 
@@ -129,12 +129,6 @@ pub fn decode_opcode(w: u32) -> Option<Instr> {
         | (w.bits(30, 21) << 1)             // ┘
     )
     .sign_ext(20);
-
-    dbg!(i_imm);
-    dbg!(s_imm);
-    dbg!(b_imm);
-    dbg!(u_imm);
-    dbg!(j_imm);
 
     match (opcode, funct3) {
         // Special values
@@ -258,13 +252,13 @@ pub fn decode_opcode(w: u32) -> Option<Instr> {
             imm: b_imm,
         }),
 
+        // Note: Jal uses J-type encoding, but Jalr uses I-type encoding
         (0x67, 0x0) => Some(Jalr {
             rd,
             rs1,
-            imm12: b_imm,
+            imm: i_imm,
         }),
-
-        (0x6f, _) => Some(Jal { rd, imm20: b_imm }),
+        (0x6f, _) => Some(Jal { rd, imm: j_imm }),
 
         (0x73, 0x0) if funct7 == 0x0 => Some(Ecall { rd, rs1 }),
         (0x73, 0x0) if funct7 == 0x1 => Some(Ebreak { rd, rs1 }),
@@ -482,13 +476,15 @@ mod test {
             fm: 0
         },
 
-        check_j_0:                      [0x6f, 0x00, 0x00, 0x00] => Jal { rd: Zero, imm20: 0 },
-        check_j_900:                    [0x6f, 0x00, 0xc0, 0x00] => Jal { rd: Zero, imm20: 900 },
-        check_j_neg_96:                 [0x6f, 0xf0, 0x9f, 0xff] => Jal {rd : Zero, imm20: -96 },
+        check_j_0:                      [0x6f, 0x00, 0x00, 0x00] => Jal { rd: Zero, imm: 0 },
+        check_j_900:                    [0x6f, 0x00, 0x40, 0x38] => Jal { rd: Zero, imm: 900 },
 
-        check_jal_76:                   [0xef, 0x00, 0xc0, 0x04] => Jal { rd: Zero, imm20: 76 },
-        check_jalr_a0:                  [0xe7, 0x00, 0x05, 0x00] => Jalr { rd: Zero, rs1: Zero, imm12: 0 },
-        check_jalr_728_ra:              [0xe7, 0x80, 0x80, 0x2d] => Jalr { rd: Zero, rs1: Zero, imm12: 728 },
+        check_j_neg_96:                 [0x6f, 0xf0, 0x1f, 0xfa] => Jal { rd: Zero, imm: -96 },
+
+        check_jal_76:                   [0xef, 0x00, 0xc0, 0x04] => Jal { rd: Ra, imm: 76 },
+
+        check_jalr_a0:                  [0xe7, 0x00, 0x05, 0x00] => Jalr { rd: Ra, rs1: A0, imm: 0 },
+        check_jalr_728_ra:              [0xe7, 0x80, 0x80, 0x2d] => Jalr { rd: Ra, rs1: Ra, imm: 728 },
 
         check_lui_a0_0:                 [0x37, 0x05, 0x00, 0x00] => Lui { rd: A0, imm: 0 },
         check_lui_a0_1:                 [0x37, 0x15, 0x00, 0x00] => Lui { rd: A0, imm: 1 },

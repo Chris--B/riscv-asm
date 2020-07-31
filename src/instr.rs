@@ -95,7 +95,7 @@ pub enum Instr {
         /// 4-bit value
         successor: u8,
 
-        /// Predecessor Write/Read/Device Output/DeviceInput
+        /// Predecessor Write/Read/Device Output/ƒDeviceInput
         ///
         /// 4-bit value
         predecessor: u8,
@@ -286,8 +286,7 @@ pub enum Instr {
     Jalr {
         rd: Reg,
         rs1: Reg,
-        /// Encoded as a multiple of 2-bytes
-        imm12: i32,
+        imm: i32,
     },
 
     /// Jumps to a relative address
@@ -299,7 +298,7 @@ pub enum Instr {
     Jal {
         rd: Reg,
         /// Encoded as a multiple of 2-bytes
-        imm20: i32,
+        imm: i32,
     },
 
     /// Make a service request to the execution environment
