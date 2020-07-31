@@ -198,7 +198,11 @@ pub fn decode_opcode(w: u32) -> Option<Instr> {
         (0x13, 0x5) if funct7 == 0x00 => Some(Srli { rd, rs1, imm5 }),
         (0x13, 0x5) if funct7 == 0x20 => Some(Srai { rd, rs1, imm5 }),
         (0x13, 0x6) => Some(Ori { rd, rs1, imm12 }),
-        (0x13, 0x7) => Some(Andi { rd, rs1, imm12 }),
+        (0x13, 0x7) => Some(Andi {
+            rd,
+            rs1,
+            imm: i_imm,
+        }),
 
         (0x17, _) => Some(Auipc { rd, imm: u_imm }),
 
@@ -439,7 +443,7 @@ mod test {
 
         check_and_a0_a0_a1:             [0x33, 0x75, 0xb5, 0x00] => And { rd: A0, rs1: A0, rs2: A1 },
 
-        check_andi_a2_a2_1:             [0x13, 0x76, 0x16, 0x00] => Andi { rd: A2, rs1: A2, imm12: 1 },
+        check_andi_a2_a2_1:             [0x13, 0x76, 0x16, 0x00] => Andi { rd: A2, rs1: A2, imm: 1 },
 
         check_auipc_sp_4:               [0x17, 0x41, 0x00, 0x00] => Auipc { rd: Sp, imm: 4 },
         check_auipc_gp_1:               [0x97, 0x11, 0x00, 0x00] => Auipc { rd: Gp, imm: 1 },

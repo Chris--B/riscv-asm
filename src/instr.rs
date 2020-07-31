@@ -153,7 +153,7 @@ pub enum Instr {
     Andi {
         rd: Reg,
         rs1: Reg,
-        imm12: i32,
+        imm: i32,
     },
     /// AUIPC (add upper immediate to pc) is used to build pc-relative addresses
     /// and uses the U-type format.
