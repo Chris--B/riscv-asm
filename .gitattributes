@@ -1,1 +1,1 @@
-scripts/*.sh inguist-detectable=false
+scripts/*.sh linguist-detectable=false
