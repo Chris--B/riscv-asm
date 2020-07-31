@@ -180,9 +180,9 @@ pub fn decode_opcode(w: u32) -> Option<Instr> {
         (0x0f, 0x0) => Some(Fence {
             rd,
             rs1,
-            successor: 0,
-            predecessor: 0,
-            fm: 0,
+            successor: w.bits(27, 24) as u8,
+            predecessor: w.bits(23, 20) as u8,
+            fm: w.bits(31, 28) as u8,
         }),
         (0x0f, 0x1) => Some(FenceI { rd, rs1, imm12 }),
 
@@ -472,7 +472,7 @@ mod test {
         // Fence  rw, rw
         check_fence_rw_rw:              [0x0f, 0x00, 0x30, 0x03] => Fence {
             rd: Zero, rs1: Zero,
-            successor: 0b_1100, predecessor: 0b_1100,
+            successor: 0b_0011, predecessor: 0b_0011,
             fm: 0
         },
 
