@@ -113,7 +113,7 @@ pub enum Instr {
     Addi {
         rd: Reg,
         rs1: Reg,
-        imm12: i32,
+        imm: i32,
     },
     Slli {
         rd: Reg,

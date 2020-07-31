@@ -192,7 +192,11 @@ pub fn decode_opcode(w: u32) -> Option<Instr> {
         }),
         (0x0f, 0x1) => Some(FenceI { rd, rs1, imm12 }),
 
-        (0x13, 0x0) => Some(Addi { rd, rs1, imm12 }),
+        (0x13, 0x0) => Some(Addi {
+            rd,
+            rs1,
+            imm: i_imm,
+        }),
         (0x13, 0x1) if funct7 == 0x00 => Some(Slli { rd, rs1, imm5 }),
         (0x13, 0x2) => Some(Slti { rd, rs1, imm12 }),
         (0x13, 0x3) => Some(Sltiu { rd, rs1, imm12 }),
@@ -433,11 +437,11 @@ mod test {
         check_add_a2_a5_a1:             [0x33, 0x86, 0xb7, 0x00] => Add { rd: A2, rs1: A5, rs2: A1, },
         check_add_t0_t0_t2:             [0xb3, 0x82, 0x72, 0x00] => Add { rd: T0, rs1: T0, rs2: T2, },
 
-        check_addi_sp_sp_64:            [0x13, 0x01, 0x01, 0x04] => Addi { rd: Sp, rs1: Sp, imm12: 64, },
-        check_addi_t1_t1_neg_1:         [0x13, 0x03, 0xf3, 0xff] => Addi { rd: T1, rs1: T1, imm12: -1, },
-        check_addi_a0_sp_32:            [0x13, 0x05, 0x01, 0x02] => Addi { rd: A0, rs1: Sp, imm12: 32, },
-        check_addi_a7_a0_neg_273:       [0x93, 0x08, 0xf5, 0xee] => Addi { rd: A7, rs1: A0, imm12: -273, },
-        check_addi_t0_t0_neg_2048:      [0x93, 0x82, 0x02, 0x80] => Addi { rd: T0, rs1: T0, imm12: -2048, },
+        check_addi_sp_sp_64:            [0x13, 0x01, 0x01, 0x04] => Addi { rd: Sp, rs1: Sp, imm: 64, },
+        check_addi_t1_t1_neg_1:         [0x13, 0x03, 0xf3, 0xff] => Addi { rd: T1, rs1: T1, imm: -1, },
+        check_addi_a0_sp_32:            [0x13, 0x05, 0x01, 0x02] => Addi { rd: A0, rs1: Sp, imm: 32, },
+        check_addi_a7_a0_neg_273:       [0x93, 0x08, 0xf5, 0xee] => Addi { rd: A7, rs1: A0, imm: -273, },
+        check_addi_t0_t0_neg_2048:      [0x93, 0x82, 0x02, 0x80] => Addi { rd: T0, rs1: T0, imm: -2048, },
 
         check_and_a0_a0_a1:             [0x33, 0x75, 0xb5, 0x00] => And { rd: A0, rs1: A0, rs2: A1 },
 
