@@ -191,7 +191,11 @@ pub fn decode_opcode(w: u32) -> Option<Instr> {
             rs1,
             imm: i_imm,
         }),
-        (0x13, 0x1) if funct7 == 0x00 => Some(Slli { rd, rs1, imm5 }),
+        (0x13, 0x1) if funct7 == 0x00 => Some(Slli {
+            rd,
+            rs1,
+            imm5: i_imm as u8,
+        }),
         (0x13, 0x2) => Some(Slti { rd, rs1, imm12 }),
         (0x13, 0x3) => Some(Sltiu { rd, rs1, imm12 }),
         (0x13, 0x4) => Some(Xori { rd, rs1, imm12 }),
@@ -528,7 +532,7 @@ mod test {
         check_sb_a2_a1_0:               [0x23, 0x80, 0xc5, 0x00] => Sb { rs1: A1, rs2: A2, imm: 0 },
         check_sw_a3_sp_44:              [0x23, 0x26, 0xd1, 0x02] => Sw { rs1: Sp, rs2: A3, imm: 44},
 
-        check_sllii_a0_a0_2:            [0x13, 0x15, 0x25, 0x00] => Slli { rd: A0, rs1: A0, imm5: 2 },
+        check_slli_a0_a0_2:             [0x13, 0x15, 0x25, 0x00] => Slli { rd: A0, rs1: A0, imm5: 2 },
 
         check_sub_sp_sp_t0:             [0x33, 0x01, 0x51, 0x40] => Sub { rd: Sp, rs1: Sp, rs2: T0 },
 
