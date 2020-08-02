@@ -117,10 +117,10 @@ pub fn decode_opcode(w: u32) -> Option<Instr> {
 
     #[rustfmt::skip]
     let b_imm: i32 = (
-        (w.bit(31) << 12)                   // ┌ Note: lsb is always 0!
-        | (w.bit(7) << 11)                  // │
-        | (w.bits(30, 25) << 5)             // │
-        | (w.bits(11, 8) << 1)              // ┘
+        (w.bit(31) << 12)           // ┌ Note: lsb is always 0!
+        | (w.bit(7) << 11)          // │
+        | (w.bits(30, 25) << 5)     // │
+        | (w.bits(11, 8) << 1)      // ┘
     )
     .sign_ext(12);
 
@@ -130,15 +130,19 @@ pub fn decode_opcode(w: u32) -> Option<Instr> {
 
     #[rustfmt::skip]
     let j_imm: i32 = (
-        (w.bit(31) << 20)                   // ┌ Note: lsb is always 0!
-        | (w.bits(19, 12) << 12)            // │
-        | (w.bit(20) << 11)                 // │
-        | (w.bits(30, 21) << 1)             // ┘
+        (w.bit(31) << 20)           // ┌ Note: lsb is always 0!
+        | (w.bits(19, 12) << 12)    // │
+        | (w.bit(20) << 11)         // │
+        | (w.bits(30, 21) << 1)     // ┘
     )
     .sign_ext(20);
 
     // Print some useful state so that it's visible when a unit test fails.
-    if cfg!(test) {
+    // This kind of printing is extremely expensive compared to decoding,
+    // so it is worth it to only enable this on a debug build.
+    // Debug builds already suffer performance issues in this function because
+    // none of the function calls here (*none* of them) are inlined!
+    if cfg!(test) && cfg!(debug_asserts) {
         println!("=== DECODE STATE ===");
         println!("word    0x{bits:08x} 0b{bits:032b} {:>12}", bits = w);
         println!("opcode  0x{bits:08x} 0b{bits:032b} {:>12}", bits = opcode);
