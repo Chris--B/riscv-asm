@@ -317,29 +317,37 @@ pub fn decode_opcode(w: u32) -> Option<Instr> {
         }),
         (0x6f, _) => Some(Jal { rd, imm: j_imm }),
 
-        (0x73, 0x0) if funct7 == 0x0 => Some(Ecall { rd, rs1 }),
-        (0x73, 0x0) if funct7 == 0x1 => Some(Ebreak { rd, rs1 }),
-        (0x73, 0x0) if funct12 == 0x302 => Some(Wfi {}),
-        (0x73, 0x0) if funct12 == 0x105 => Some(Mret {}),
+        // SYSTEM opcodes
+        (0x73, 0x0) => match (funct7, rs2_idx) {
+            (0x00, 0x2) => Some(Uret {}),
+            (0x08, 0x2) => Some(Sret {}),
+            (0x18, 0x2) => Some(Mret {}),
 
-        (0x73, 0x1) => Some(Csrrw {
-            rs1,
-            imm12: imm12 as u32,
-        }),
-        (0x73, 0x2) => Some(Csrrs {
+            (0x08, 0x5) => Some(Wfi {}),
+
+            (0x00, 0x0) => Some(Ebreak { rd, rs1 }),
+            (0x00, 0x1) => Some(Ecall { rd, rs1 }),
+
+            _ => None,
+        },
+
+        (0x73, 0x1) => Some(Csrrw { rd, rs1, csr }),
+        (0x73, 0x2) => Some(Csrrs { rd, rs1, csr }),
+        (0x73, 0x3) => Some(Csrrc { rd, rs1, csr }),
+        (0x73, 0x5) => Some(Csrrwi {
             rd,
-            rs1,
-            imm12: imm12 as u32,
+            src: rs1_idx,
+            csr,
         }),
-        (0x73, 0x3) => Some(Csrrc { rs1 }),
-        (0x73, 0x5) => Some(Csrrwi { rd }),
         (0x73, 0x6) => Some(Csrrsi {
-            imm5,
-            imm12: imm12 as u32,
+            rd,
+            src: rs1_idx,
+            csr,
         }),
         (0x73, 0x7) => Some(Csrrci {
-            imm5,
-            imm12: imm12 as u32,
+            rd,
+            src: rs1_idx,
+            csr,
         }),
         _ => None,
     }
@@ -477,6 +485,8 @@ mod test {
     make_instr_test! {
         // The zero-word is an illegal instruction by design.
         check_zero_word:                [0x00, 0x00, 0x00, 0x00] => Illegal,
+
+        // This is the encoding that LLVM used for it's "unimpl" instruction
         check_unimp:                    [0x73, 0x10, 0x00, 0xc0] => Illegal,
 
         // TODO: Check
@@ -508,28 +518,32 @@ mod test {
 
         check_bltu_a1_a0_neg_16:        [0xe3, 0xe8, 0xa5, 0xfe] => Bltu { rs1: A1, rs2: A0, imm: -16 },
 
-        check_bne_t3_t1_neg_64:          [0xe3, 0x10, 0x6e, 0xfc] => Bne { rs1: T3, rs2: T1, imm: -64 },
+        check_bne_t3_t1_neg_64:         [0xe3, 0x10, 0x6e, 0xfc] => Bne { rs1: T3, rs2: T1, imm: -64 },
 
-        // ==== TODO: All of the Csrr tests and decoding is incomplete
         // Csrr a0, mcause
-        check_csrr_a0_mcause:           [0x73, 0x25, 0x20, 0x34] => Csrrc { rs1: Zero },
+        check_csrr_a0_mcause:           [0x73, 0x25, 0x20, 0x34] => Csrrc { rd: A0, rs1: Zero, csr: 0 },
 
         // Csrr a0, mhartid
-        check_cssr_a0_mhartid:          [0x73, 0x25, 0x40, 0xf1] => Csrrc { rs1: Zero },
+        check_cssr_a0_mhartid:          [0x73, 0x25, 0x40, 0xf1] => Csrrc { rd: A0, rs1: Zero, csr: 0 },
 
         // Csrw mtvec, t0
-        check_csrw_mtvec_t0:            [0x73, 0x90, 0x52, 0x30] => Csrrw { rs1: T0, imm12: 0 },
+        check_csrw_mtvec_t0:            [0x73, 0x90, 0x52, 0x30] => Csrrw { rd: Zero, rs1: T0, csr: 0 },
 
         // Csrwi  mie, 0
-        check_csrwi_mie_0:              [0x73, 0x50, 0x40, 0x30] => Csrrwi { rd: Zero },
+        check_csrwi_mie_0:              [0x73, 0x50, 0x40, 0x30] => Csrrwi { rd: Zero, src: 0, csr: 0 },
 
         // Csrwi  mip, 0
-        check_csrwi_mip_0:              [0x73, 0x50, 0x40, 0x34] => Csrrwi { rd: Zero },
+        check_csrwi_mip_0:              [0x73, 0x50, 0x40, 0x34] => Csrrwi { rd: Zero, src: 0, csr: 0 },
+
+        // Mret
+        check_mret:                     [0x73, 0x00, 0x20, 0x30] => Mret {},
 
         // Fence  rw, rw
         check_fence_rw_rw:              [0x0f, 0x00, 0x30, 0x03] => Fence {
-            rd: Zero, rs1: Zero,
-            successor: 0b_0011, predecessor: 0b_0011,
+            rd: Zero,
+            rs1: Zero,
+            successor: 0b_0011,
+            predecessor: 0b_0011,
             fm: 0
         },
 
@@ -543,6 +557,8 @@ mod test {
         check_jalr_a0:                  [0xe7, 0x00, 0x05, 0x00] => Jalr { rd: Ra, rs1: A0, imm: 0 },
         check_jalr_728_ra:              [0xe7, 0x80, 0x80, 0x2d] => Jalr { rd: Ra, rs1: Ra, imm: 728 },
 
+        check_ret:                      [0x67, 0x80, 0x00, 0x00] => Jalr { rd: Zero, rs1: Ra, imm: 0 },
+
         check_lui_a0_0:                 [0x37, 0x05, 0x00, 0x00] => Lui { rd: A0, imm: 0 },
         check_lui_a0_1:                 [0x37, 0x15, 0x00, 0x00] => Lui { rd: A0, imm: 1 },
         check_lui_a0_2:                 [0x37, 0x25, 0x00, 0x00] => Lui { rd: A0, imm: 2 },
@@ -555,12 +571,6 @@ mod test {
         check_lw_t1_8_sp:               [0x03, 0x23, 0x81, 0x00] => Lw { rd: T1, rs1: Sp, imm: 8},
         check_lw_a6_56_sp:              [0x03, 0x28, 0x81, 0x03] => Lw { rd: A6, rs1: Sp, imm: 56},
         check_lw_t6_28_sp:              [0x83, 0x2f, 0xc1, 0x01] => Lw { rd: T6, rs1: Sp, imm: 28},
-
-        // Mret
-        check_mret:                     [0x73, 0x00, 0x20, 0x30] => Mret {},
-
-        // Ret
-        // check_ret:                      [0x67, 0x80, 0x00, 0x00] => Ret {},
 
         check_sb_a2_a1_0:               [0x23, 0x80, 0xc5, 0x00] => Sb { rs1: A1, rs2: A2, imm: 0 },
         check_sw_a3_sp_44:              [0x23, 0x26, 0xd1, 0x02] => Sw { rs1: Sp, rs2: A3, imm: 44},

@@ -318,35 +318,44 @@ pub enum Instr {
 
     // TODO: System Instructions
     Wfi {},
+    Uret {},
+    Sret {},
     Mret {},
 
     Csrrw {
+        rd: Reg,
         rs1: Reg,
-        imm12: u32,
+        csr: u16,
     },
 
     Csrrs {
         rd: Reg,
         rs1: Reg,
-        imm12: u32,
+        csr: u16,
     },
 
     Csrrc {
+        rd: Reg,
         rs1: Reg,
+        csr: u16,
     },
 
     Csrrwi {
         rd: Reg,
+        src: u8,
+        csr: u16,
     },
 
     Csrrsi {
-        imm5: u8,
-        imm12: u32,
+        rd: Reg,
+        src: u8,
+        csr: u16,
     },
 
     Csrrci {
-        imm5: u8,
-        imm12: u32,
+        rd: Reg,
+        src: u8,
+        csr: u16,
     },
 
     Hint {
