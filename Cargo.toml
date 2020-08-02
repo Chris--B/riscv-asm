@@ -20,7 +20,7 @@ path = "src/lib.rs"
 
 [[bin]]
 name = "dis"
-path = "src/dis.rs"
+path = "src/bin/dis.rs"
 
 [dependencies]
 goblin = "0.2"
