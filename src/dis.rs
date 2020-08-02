@@ -22,7 +22,7 @@ pub struct Entry {
     pub word: u32,
     pub bytes: [u8; 4],
     pub o_instr: Option<Instr>,
-    pub labels: Option<Vec<String>>,
+    pub labels: Vec<String>,
 }
 
 impl Disassembly {
@@ -65,23 +65,30 @@ impl Disassembly {
         //
         // We expect to find exactly one ".text" section.
         // If there are multiple (is that allowed?), we will ignore them.
-        let section = match elf.section_headers.iter().find(|section| {
-            let name = &elf.shdr_strtab[section.sh_name];
-            name == ".text"
-        }) {
-            Some(section) => section,
-            None => {
-                // TODO: return an error
-                panic!("No '.text' section in elf")
-            }
-        };
+        // We'll use this section index to correlate symbols to the
+        // .text section, later.
+        let (text_shndx, section) =
+            match elf
+                .section_headers
+                .iter()
+                .enumerate()
+                .find(|(_idx, section)| {
+                    let name = &elf.shdr_strtab[section.sh_name];
+                    name == ".text"
+                }) {
+                Some(pair) => pair,
+                None => {
+                    // TODO: return an error
+                    panic!("No '.text' section in elf")
+                }
+            };
 
         // The '.text' section contains the executable code that we will load
         // into the Disassembly object, so we need to extract and parse the
         // bytes into instructions.
         let start = section.sh_offset as usize;
         let end = start + section.sh_size as usize;
-        let bytes = &buffer[start..end];
+        let bytes = &buffer[start..=end];
 
         println!("Found {} bytes of code in \".text\"", bytes.len());
 
@@ -116,9 +123,34 @@ impl Disassembly {
                 word,
                 bytes: word.to_le_bytes(),
                 o_instr,
-                labels: None,
+                labels: vec![],
             };
             entries.insert(addr, entry);
+        }
+
+        // Find the symbols (labels) that we need to disassamble from
+        // the symbols table in the elf.
+        // dbg!(elf.strtab.to_vec());
+        for sym in &elf.syms {
+            let name = &elf.strtab[sym.st_name];
+
+            // Skip empty symbols (what are they even doing here?)
+            if name.trim().is_empty() {
+                continue;
+            }
+
+            // Limit our symbols to those referencing the text section
+            if sym.st_shndx != text_shndx {
+                continue;
+            }
+
+            // This is the address (within the .text section) that the symbol
+            // references.
+            let addr = sym.st_value as u32;
+
+            if let Some(entry) = entries.get_mut(&addr) {
+                entry.labels.push(name.to_string());
+            }
         }
 
         Ok(Disassembly { entries })
@@ -133,7 +165,7 @@ impl Disassembly {
 
         // So step 4 at a time - all instructions are 4 byte-aligned.
         // (Are labels?)
-        (addr_min..addr_max)
+        (addr_min..=addr_max)
             .step_by(4)
             .map(move |addr| &self.entries[&addr])
     }
