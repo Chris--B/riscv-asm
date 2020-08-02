@@ -3,6 +3,7 @@ use std::path::Path;
 
 use goblin::{elf::Elf, Object};
 
+pub mod csr;
 mod decode;
 mod instr;
 

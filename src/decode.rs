@@ -103,7 +103,7 @@ pub fn decode_opcode(w: u32) -> Option<Instr> {
     let rs2: Reg = rs2_idx.try_into().unwrap_or(Reg::Zero);
     let rs1: Reg = rs1_idx.try_into().unwrap_or(Reg::Zero);
 
-    // TODO: Not sure if these are always loaded the same way
+    // TODO: Some filler instruction parsing still use these
     let imm5: u8 = 0;
     let imm12: i32 = 0;
     let imm20: i32 = 0;
