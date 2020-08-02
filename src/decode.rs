@@ -90,15 +90,18 @@ pub fn decode_opcode(w: u32) -> Option<Instr> {
     // larger match block below.
     let opcode = w.bits(6, 0);
     let funct3 = w.bits(14, 12);
-    let rd_idx = w.bits(11, 7);
-    let rs2_idx = w.bits(24, 20);
-    let rs1_idx = w.bits(19, 15);
+    let rd_idx = w.bits(11, 7) as u8;
+    let rs2_idx = w.bits(24, 20) as u8;
+    let rs1_idx = w.bits(19, 15) as u8;
     let funct7 = w.bits(31, 25);
     let funct12 = w.bits(31, 20);
 
-    let rd: Reg = rd_idx.try_into().unwrap_or_default();
-    let rs2: Reg = rs2_idx.try_into().unwrap_or_default();
-    let rs1: Reg = rs1_idx.try_into().unwrap_or_default();
+    // csr is a lot like funct12/I-type immediates, but it is zero-extended
+    let csr = funct12 as u16;
+
+    let rd: Reg = rd_idx.try_into().unwrap_or(Reg::Zero);
+    let rs2: Reg = rs2_idx.try_into().unwrap_or(Reg::Zero);
+    let rs1: Reg = rs1_idx.try_into().unwrap_or(Reg::Zero);
 
     // TODO: Not sure if these are always loaded the same way
     let imm5: u8 = 0;

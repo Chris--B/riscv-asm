@@ -40,12 +40,6 @@ pub enum Reg {
     T6 = 31,
 }
 
-impl Default for Reg {
-    fn default() -> Reg {
-        Reg::Zero
-    }
-}
-
 #[allow(dead_code)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Instr {
@@ -363,6 +357,10 @@ pub enum Instr {
 }
 
 /// An error when a register is referenced out of bounds
+///
+/// A `Reg` value can be constructed from a `u8` or a `u32`, whichever is more
+/// convenient to use. Notice though, that all valid `Reg` values are derived
+/// from valid `u8`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct RegIndexError {
     idx: u32,
@@ -371,46 +369,47 @@ pub struct RegIndexError {
 impl TryFrom<u32> for Reg {
     type Error = RegIndexError;
     fn try_from(idx: u32) -> Result<Reg, Self::Error> {
-        let o_reg = match idx {
-            0 => Some(Reg::Zero),
-            1 => Some(Reg::Ra),
-            2 => Some(Reg::Sp),
-            3 => Some(Reg::Gp),
-            4 => Some(Reg::Tp),
-            5 => Some(Reg::T0),
-            6 => Some(Reg::T1),
-            7 => Some(Reg::T2),
-            8 => Some(Reg::S0),
-            9 => Some(Reg::S1),
-            10 => Some(Reg::A0),
-            11 => Some(Reg::A1),
-            12 => Some(Reg::A2),
-            13 => Some(Reg::A3),
-            14 => Some(Reg::A4),
-            15 => Some(Reg::A5),
-            16 => Some(Reg::A6),
-            17 => Some(Reg::A7),
-            18 => Some(Reg::S2),
-            19 => Some(Reg::S3),
-            20 => Some(Reg::S4),
-            21 => Some(Reg::S5),
-            22 => Some(Reg::S6),
-            23 => Some(Reg::S7),
-            24 => Some(Reg::S8),
-            25 => Some(Reg::S9),
-            26 => Some(Reg::S10),
-            27 => Some(Reg::S11),
-            28 => Some(Reg::T3),
-            29 => Some(Reg::T4),
-            30 => Some(Reg::T5),
-            31 => Some(Reg::T6),
-            _ => None,
-        };
-
-        if let Some(reg) = o_reg {
-            Ok(reg)
-        } else {
-            Err(RegIndexError { idx })
+        match idx {
+            0 => Ok(Reg::Zero),
+            1 => Ok(Reg::Ra),
+            2 => Ok(Reg::Sp),
+            3 => Ok(Reg::Gp),
+            4 => Ok(Reg::Tp),
+            5 => Ok(Reg::T0),
+            6 => Ok(Reg::T1),
+            7 => Ok(Reg::T2),
+            8 => Ok(Reg::S0),
+            9 => Ok(Reg::S1),
+            10 => Ok(Reg::A0),
+            11 => Ok(Reg::A1),
+            12 => Ok(Reg::A2),
+            13 => Ok(Reg::A3),
+            14 => Ok(Reg::A4),
+            15 => Ok(Reg::A5),
+            16 => Ok(Reg::A6),
+            17 => Ok(Reg::A7),
+            18 => Ok(Reg::S2),
+            19 => Ok(Reg::S3),
+            20 => Ok(Reg::S4),
+            21 => Ok(Reg::S5),
+            22 => Ok(Reg::S6),
+            23 => Ok(Reg::S7),
+            24 => Ok(Reg::S8),
+            25 => Ok(Reg::S9),
+            26 => Ok(Reg::S10),
+            27 => Ok(Reg::S11),
+            28 => Ok(Reg::T3),
+            29 => Ok(Reg::T4),
+            30 => Ok(Reg::T5),
+            31 => Ok(Reg::T6),
+            _ => Err(RegIndexError { idx }),
         }
+    }
+}
+
+impl TryFrom<u8> for Reg {
+    type Error = RegIndexError;
+    fn try_from(idx: u8) -> Result<Reg, Self::Error> {
+        Reg::try_from(idx as u32)
     }
 }
