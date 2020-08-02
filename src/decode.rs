@@ -90,11 +90,15 @@ pub fn decode_opcode(w: u32) -> Option<Instr> {
     // larger match block below.
     let opcode = w.bits(6, 0);
     let funct3 = w.bits(14, 12);
-    let rd: Reg = w.bits(11, 7).try_into().unwrap_or_default();
-    let rs2: Reg = w.bits(24, 20).try_into().unwrap_or_default();
-    let rs1: Reg = w.bits(19, 15).try_into().unwrap_or_default();
+    let rd_idx = w.bits(11, 7);
+    let rs2_idx = w.bits(24, 20);
+    let rs1_idx = w.bits(19, 15);
     let funct7 = w.bits(31, 25);
     let funct12 = w.bits(31, 20);
+
+    let rd: Reg = rd_idx.try_into().unwrap_or_default();
+    let rs2: Reg = rs2_idx.try_into().unwrap_or_default();
+    let rs1: Reg = rs1_idx.try_into().unwrap_or_default();
 
     // TODO: Not sure if these are always loaded the same way
     let imm5: u8 = 0;
@@ -129,6 +133,32 @@ pub fn decode_opcode(w: u32) -> Option<Instr> {
         | (w.bits(30, 21) << 1)             // ┘
     )
     .sign_ext(20);
+
+    // Print some useful state so that it's visible when a unit test fails.
+    if cfg!(test) {
+        println!("=== DECODE STATE ===");
+        println!("word    0x{bits:08x} 0b{bits:032b} {:>12}", bits = w);
+        println!("opcode  0x{bits:08x} 0b{bits:032b} {:>12}", bits = opcode);
+        println!("funct3  0x{bits:08x} 0b{bits:032b} {:>12}", bits = funct3);
+        println!("funct7  0x{bits:08x} 0b{bits:032b} {:>12}", bits = funct7);
+        println!("funct12 0x{bits:08x} 0b{bits:032b} {:>12}", bits = funct12);
+        println!();
+
+        println!("i_imm   0x{bits:08x} 0b{bits:032b} {:>12}", bits = i_imm);
+        println!("s_imm   0x{bits:08x} 0b{bits:032b} {:>12}", bits = s_imm);
+        println!("b_imm   0x{bits:08x} 0b{bits:032b} {:>12}", bits = b_imm);
+        println!("u_imm   0x{bits:08x} 0b{bits:032b} {:>12}", bits = u_imm);
+        println!("j_imm   0x{bits:08x} 0b{bits:032b} {:>12}", bits = j_imm);
+
+        println!();
+        println!("rd      {:?}", rd);
+        println!("rd_idx  0x{bits:08x} 0b{bits:032b} {:>5}", bits = rd_idx);
+        println!("rs2     {:?}", rs2);
+        println!("rs2_idx 0x{bits:08x} 0b{bits:032b} {:>5}", bits = rs2_idx);
+        println!("rs1     {:?}", rs1);
+        println!("rs1_idx 0x{bits:08x} 0b{bits:032b} {:>5}", bits = rs1_idx);
+        println!();
+    }
 
     match (opcode, funct3) {
         // Special values
