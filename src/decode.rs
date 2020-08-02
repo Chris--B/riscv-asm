@@ -152,8 +152,8 @@ pub fn decode_opcode(w: u32) -> Option<Instr> {
         println!("b_imm   0x{bits:08x} 0b{bits:032b} {:>12}", bits = b_imm);
         println!("u_imm   0x{bits:08x} 0b{bits:032b} {:>12}", bits = u_imm);
         println!("j_imm   0x{bits:08x} 0b{bits:032b} {:>12}", bits = j_imm);
-
         println!();
+
         println!("rd      {:?}", rd);
         println!("rd_idx  0x{bits:08x} 0b{bits:032b} {:>5}", bits = rd_idx);
         println!("rs2     {:?}", rs2);
@@ -357,6 +357,7 @@ pub fn decode_opcode(w: u32) -> Option<Instr> {
 mod test {
     use super::*;
 
+    use crate::csr;
     use Reg::*;
 
     // These asserts give us diffs when they fail.
@@ -487,7 +488,13 @@ mod test {
         check_zero_word:                [0x00, 0x00, 0x00, 0x00] => Illegal,
 
         // This is the encoding that LLVM used for it's "unimpl" instruction
-        check_unimp:                    [0x73, 0x10, 0x00, 0xc0] => Illegal,
+        check_unimp:                    [0x73, 0x10, 0x00, 0xc0] => Csrrw {
+            rd: Zero,
+            rs1: Zero,
+            // I have no idea where this constant is referenced, but this is what
+            // LLVM reports as the encoded csr...
+            csr: 0b_1100_0000_0000,
+        },
 
         // TODO: Check
         //      add a, b, c
@@ -521,19 +528,19 @@ mod test {
         check_bne_t3_t1_neg_64:         [0xe3, 0x10, 0x6e, 0xfc] => Bne { rs1: T3, rs2: T1, imm: -64 },
 
         // Csrr a0, mcause
-        check_csrr_a0_mcause:           [0x73, 0x25, 0x20, 0x34] => Csrrc { rd: A0, rs1: Zero, csr: 0 },
+        check_csrr_a0_mcause:           [0x73, 0x25, 0x20, 0x34] => Csrrs { rd: A0, rs1: Zero, csr: csr::MCAUSE.num() },
 
         // Csrr a0, mhartid
-        check_cssr_a0_mhartid:          [0x73, 0x25, 0x40, 0xf1] => Csrrc { rd: A0, rs1: Zero, csr: 0 },
+        check_cssr_a0_mhartid:          [0x73, 0x25, 0x40, 0xf1] => Csrrs { rd: A0, rs1: Zero, csr: csr::MHARTID.num() },
 
         // Csrw mtvec, t0
-        check_csrw_mtvec_t0:            [0x73, 0x90, 0x52, 0x30] => Csrrw { rd: Zero, rs1: T0, csr: 0 },
+        check_csrw_mtvec_t0:            [0x73, 0x90, 0x52, 0x30] => Csrrw { rd: Zero, rs1: T0, csr: csr::MTVEC.num() },
 
         // Csrwi  mie, 0
-        check_csrwi_mie_0:              [0x73, 0x50, 0x40, 0x30] => Csrrwi { rd: Zero, src: 0, csr: 0 },
+        check_csrwi_mie_0:              [0x73, 0x50, 0x40, 0x30] => Csrrwi { rd: Zero, src: 0, csr: csr::MIE.num() },
 
         // Csrwi  mip, 0
-        check_csrwi_mip_0:              [0x73, 0x50, 0x40, 0x34] => Csrrwi { rd: Zero, src: 0, csr: 0 },
+        check_csrwi_mip_0:              [0x73, 0x50, 0x40, 0x34] => Csrrwi { rd: Zero, src: 0, csr: csr::MIP.num() },
 
         // Mret
         check_mret:                     [0x73, 0x00, 0x20, 0x30] => Mret {},
