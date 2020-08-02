@@ -47,7 +47,7 @@ impl Bits for u32 {
 }
 
 #[allow(unused_variables)]
-pub fn decode_opcode(w: u32) -> Option<Instr> {
+pub fn decode_opcode(word: u32) -> Option<Instr> {
     /*
       Different instructions may use different named fields in the enoding,
     and not all fields are always used. Many fields overlap.
@@ -88,13 +88,16 @@ pub fn decode_opcode(w: u32) -> Option<Instr> {
 
     // We extract each field value here, then reference them in the
     // larger match block below.
-    let opcode = w.bits(6, 0);
-    let funct3 = w.bits(14, 12);
-    let rd_idx = w.bits(11, 7) as u8;
-    let rs2_idx = w.bits(24, 20) as u8;
-    let rs1_idx = w.bits(19, 15) as u8;
-    let funct7 = w.bits(31, 25);
-    let funct12 = w.bits(31, 20);
+    let opcode = word.bits(6, 0);
+    let funct3 = word.bits(14, 12);
+    let rd_idx = word.bits(11, 7) as u8;
+    let rs2_idx = word.bits(24, 20) as u8;
+    let rs1_idx = word.bits(19, 15) as u8;
+    let funct7 = word.bits(31, 25);
+    let funct12 = word.bits(31, 20);
+    let successor = word.bits(27, 24) as u8;
+    let predecessor = word.bits(23, 20) as u8;
+    let fm = word.bits(31, 28) as u8;
 
     // csr is a lot like funct12/I-type immediates, but it is zero-extended
     let csr = funct12 as u16;
@@ -111,29 +114,29 @@ pub fn decode_opcode(w: u32) -> Option<Instr> {
     // R-type instructions do not have an immediate encoded
     let _r_imm: ();
 
-    let i_imm: i32 = w.bits(31, 20).sign_ext(11);
+    let i_imm: i32 = word.bits(31, 20).sign_ext(11);
 
-    let s_imm: i32 = ((w.bits(31, 25) << 5) | w.bits(11, 7)).sign_ext(11);
+    let s_imm: i32 = ((word.bits(31, 25) << 5) | word.bits(11, 7)).sign_ext(11);
 
     #[rustfmt::skip]
     let b_imm: i32 = (
-        (w.bit(31) << 12)           // ┌ Note: lsb is always 0!
-        | (w.bit(7) << 11)          // │
-        | (w.bits(30, 25) << 5)     // │
-        | (w.bits(11, 8) << 1)      // ┘
+        (word.bit(31) << 12)           // ┌ Note: lsb is always 0!
+        | (word.bit(7) << 11)          // │
+        | (word.bits(30, 25) << 5)     // │
+        | (word.bits(11, 8) << 1)      // ┘
     )
     .sign_ext(12);
 
     // U-type encodings may shift this by 12, or may keep it as-is but
     // reinterpret the bits as the upper 20-bits of a word.
-    let u_imm: u32 = w.bits(31, 12);
+    let u_imm: u32 = word.bits(31, 12);
 
     #[rustfmt::skip]
     let j_imm: i32 = (
-        (w.bit(31) << 20)           // ┌ Note: lsb is always 0!
-        | (w.bits(19, 12) << 12)    // │
-        | (w.bit(20) << 11)         // │
-        | (w.bits(30, 21) << 1)     // ┘
+        (word.bit(31) << 20)           // ┌ Note: lsb is always 0!
+        | (word.bits(19, 12) << 12)    // │
+        | (word.bit(20) << 11)         // │
+        | (word.bits(30, 21) << 1)     // ┘
     )
     .sign_ext(20);
 
@@ -144,11 +147,16 @@ pub fn decode_opcode(w: u32) -> Option<Instr> {
     // none of the function calls here (*none* of them) are inlined!
     if cfg!(test) && cfg!(debug_asserts) {
         println!("=== DECODE STATE ===");
-        println!("word    0x{bits:08x} 0b{bits:032b} {:>12}", bits = w);
+        println!("word    0x{bits:08x} 0b{bits:032b} {:>12}", bits = word);
         println!("opcode  0x{bits:08x} 0b{bits:032b} {:>12}", bits = opcode);
         println!("funct3  0x{bits:08x} 0b{bits:032b} {:>12}", bits = funct3);
         println!("funct7  0x{bits:08x} 0b{bits:032b} {:>12}", bits = funct7);
         println!("funct12 0x{bits:08x} 0b{bits:032b} {:>12}", bits = funct12);
+        #[rustfmt::skip]
+        println!("succ.   0x{bits:08x} 0b{bits:032b} {:>12}", bits = successor);
+        #[rustfmt::skip]
+        println!("predec. 0x{bits:08x} 0b{bits:032b} {:>12}", bits = predecessor);
+        println!("fm 0x{bits:08x} 0b{bits:032b} {:>12}", bits = fm);
         println!();
 
         println!("i_imm   0x{bits:08x} 0b{bits:032b} {:>12}", bits = i_imm);
@@ -169,7 +177,7 @@ pub fn decode_opcode(w: u32) -> Option<Instr> {
 
     match (opcode, funct3) {
         // Special values
-        _ if w == 0x0 => {
+        _ if word == 0x0 => {
             // The all-zero instruction is special-cased as illegal, so we handle
             // it here like an instruction. For the rest of our decoding, we'll handle
             // invalid instructions like an error.
@@ -217,9 +225,9 @@ pub fn decode_opcode(w: u32) -> Option<Instr> {
         (0x0f, 0x0) => Some(Fence {
             rd,
             rs1,
-            successor: w.bits(27, 24) as u8,
-            predecessor: w.bits(23, 20) as u8,
-            fm: w.bits(31, 28) as u8,
+            successor,
+            predecessor,
+            fm,
         }),
         (0x0f, 0x1) => Some(FenceI { rd, rs1, imm12 }),
 
