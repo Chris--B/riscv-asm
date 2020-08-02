@@ -1,6 +1,6 @@
 [package]
 name = "riscv-asm"
-version = "0.0.2-wip"
+version = "0.0.3-wip"
 description = "A WIP, simple-to-use assembler and disassembler for `riscv32i-unknown-none-elf` targets"
 authors = ["Chris Butler <chrisbutler296@gmail.com>"]
 license = "MIT"

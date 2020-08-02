@@ -46,7 +46,6 @@ impl Bits for u32 {
     }
 }
 
-#[allow(unused_variables)]
 pub fn decode_opcode(word: u32) -> Option<Instr> {
     /*
       Different instructions may use different named fields in the enoding,
@@ -109,7 +108,6 @@ pub fn decode_opcode(word: u32) -> Option<Instr> {
     // TODO: Some filler instruction parsing still use these
     let imm5: u8 = 0;
     let imm12: i32 = 0;
-    let imm20: i32 = 0;
 
     // R-type instructions do not have an immediate encoded
     let _r_imm: ();

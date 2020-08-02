@@ -54,30 +54,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opts = MyOptions::new();
     dbg!(&opts);
 
-    let code: Vec<u32> = riscv_asm::parse_elf_from_path(&opts.input)?;
+    use riscv_asm::dis::Disassembly;
+
+    let dis = Disassembly::parse_from_elf_path(&opts.input)?;
 
     // Text
     println!("ASM:");
 
-    for (idx, word) in code.iter().cloned().enumerate() {
+    for entry in dis.disassembly() {
         // Address of instruction
-        print!("  0x{:>03x}:    ", std::mem::size_of::<u32>() * idx);
+        print!("  0x{:>03x}:    ", entry.addr);
 
         // Raw bytes of instruction
-        for byte in word.to_le_bytes().iter() {
+        for byte in entry.bytes.iter() {
             print!("{:02x} ", byte);
         }
 
         // Instruction as text
-        let o_instr = riscv_asm::decode_opcode(word);
-        let instr_text = if let Some(instr) = o_instr {
+        let instr_text = if let Some(instr) = entry.o_instr {
             format!("{:?}", instr)
         } else {
-            format!("0x{:08}, 0b_{:b}", word, word)
+            format!("0x{word:08}, 0b_{word:b}", word = entry.word)
         };
-
         print!("   {:<25}", instr_text);
 
+        // Always end the entry with a newline
         println!();
     }
     println!();
