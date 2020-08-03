@@ -64,19 +64,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     use std::io::Write;
     let mut file = File::create(opts.output.unwrap())?;
 
-    // We cannot write an escaped character (\t) in a string literal, so we must use the format string.
-    // Generally this is wasteful, but this is a raw string so escaped strings aren't processed.
-    #[allow(clippy::write_literal)]
-    writeln!(
-        file,
-        r#"
-{input}:{tab}file format ELF32-riscv
-
-
-Disassembly of section .text:"#,
-        tab = "\t",
-        input = &opts.input
-    )?;
+    write!(file, "\n{}:\tfile format ELF32-riscv\n\n\n", &opts.input)?;
+    writeln!(file, "Disassembly of section .text:")?;
 
     for entry in dis.disassembly() {
         if !entry.labels.is_empty() {
