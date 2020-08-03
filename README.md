@@ -19,13 +19,26 @@ $ cargo run --bin dis ./path/to/riscv32i/bin.elf
 See the full `--help` output for more options
 ```bash
 $ cargo run --bin dis -- --help
-Usage: target/debug/dis [OPTIONS]
+riscv-asm 0.0.3-wip
 
-Positional arguments:
-  input                Path to a RISC-V elf to disassemble
+USAGE:
+    dis [OPTIONS] <input>
 
-Optional arguments:
-  -h, --help           Print the help message and exit
-  -a, --allow-pseudo   "Use equivalent pseudo instructions when possible" (default: true)
-  -o, --output OUTPUT  Path to write disassembled output into
+ARGS:
+    <input>    
+            Path to a RISC-V elf to disassemble
+
+FLAGS:
+    -h, --help       
+            Prints help information
+
+    -V, --version    
+            Prints version information
+
+
+OPTIONS:
+    -o, --output <output>    
+            Path to write disassembled output into
+            
+            If unspecified, this is derived from the input file. If "-" is specified, the output is directed to stdout.
 ```

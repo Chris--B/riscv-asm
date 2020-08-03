@@ -23,8 +23,8 @@ name = "dis"
 path = "src/bin/dis.rs"
 
 [dependencies]
+clap = "3.0.0-beta.1"
 goblin = "0.2"
-gumdrop = "0.8"
 
 [dev-dependencies]
 pretty_assertions = " 0.6"

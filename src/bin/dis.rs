@@ -1,32 +1,27 @@
 use std::fs::File;
+use std::io::Write;
 
-use gumdrop::Options;
+use clap::Clap;
 
-#[derive(Debug, Options)]
-struct MyOptions {
-    /// Print the help message and exit
-    #[options()]
-    help: bool,
-
-    /// "Use equivalent pseudo instructions when possible"
-    #[options(default = "true")]
-    allow_pseudo: bool,
-
+#[derive(Debug, Clap)]
+#[clap(version)]
+struct DisOpts {
     /// Path to a RISC-V elf to disassemble
-    #[options(free)]
     input: String,
 
     /// Path to write disassembled output into
     ///
-    /// If unspecified, this is derived from the input file
-    #[options()]
+    /// If unspecified, this is derived from the input file.
+    /// If "-" is specified, the output is directed to stdout.
+    #[clap(short, long)]
     output: Option<String>,
 }
 
-impl MyOptions {
+impl DisOpts {
     /// Parse args from argv, resolve extra steps, or exit trying.
     fn new() -> Self {
-        let mut opts = MyOptions::parse_args_default_or_exit();
+        let mut opts = DisOpts::parse();
+
         // Some options have extra rules so we resolve them in a second pass.
         opts.resolve_extras();
 
@@ -53,56 +48,63 @@ impl MyOptions {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let opts = MyOptions::new();
-    dbg!(&opts);
-
-    use riscv_asm::dis::Disassembly;
-
-    let dis = Disassembly::parse_from_elf_path(&opts.input)?;
+    let opts = DisOpts::new();
+    let dis = riscv_asm::dis::Disassembly::parse_from_elf_path(&opts.input)?;
 
     // Emulate LLVM disassembly output and write to file.
-    use std::io::Write;
-    let mut file = File::create(opts.output.unwrap())?;
 
-    write!(file, "\n{}:\tfile format ELF32-riscv\n\n\n", &opts.input)?;
-    writeln!(file, "Disassembly of section .text:")?;
+    // Manage two objects - stdout or a file. We'll only initialize one of these, and reference it through `out`.
+    // This is safe because rustc won't let us reference `file` or `stdout` outside of the match block. :)
+    // TODO: Hmmmm is this a crate yet?
+    let out: &mut dyn Write;
+    let mut file: File;
+    let mut stdout: std::io::Stdout;
+
+    match opts.output.unwrap().as_str() {
+        "-" => {
+            stdout = std::io::stdout();
+            out = &mut stdout;
+        }
+        filename => {
+            file = File::create(filename)?;
+            out = &mut file;
+        }
+    }
+
+    write!(out, "\n{}:\tfile format ELF32-riscv\n\n\n", &opts.input)?;
+    writeln!(out, "Disassembly of section .text:")?;
 
     for entry in dis.disassembly() {
         if !entry.labels.is_empty() {
             // Add a blank line to separate sections with a label
-            writeln!(file)?;
+            writeln!(out)?;
 
             for label in &entry.labels {
                 // Print the entire address, zero-padding included
-                writeln!(
-                    file,
-                    "{addr:08x} {label}:",
-                    addr = entry.addr,
-                    label = label
-                )?;
+                writeln!(out, "{addr:08x} {label}:", addr = entry.addr, label = label)?;
             }
         }
 
         // Address of instruction
-        write!(file, "{:8x}: ", entry.addr)?;
+        write!(out, "{:8x}: ", entry.addr)?;
 
         // Raw bytes of instruction
         for byte in entry.bytes.iter() {
-            write!(file, "{:02x} ", byte)?;
+            write!(out, "{:02x} ", byte)?;
         }
 
         // Spacing
-        write!(file, "{:17}\t", "")?;
+        write!(out, "{:17}\t", "")?;
 
         // Instruction as text
         if let Some(instr) = entry.o_instr {
-            write!(file, "{:?}", instr)?;
+            write!(out, "{:?}", instr)?;
         } else {
-            write!(file, "???")?;
+            write!(out, "???")?;
         }
 
         // Always end the entry with a newline
-        writeln!(file)?;
+        writeln!(out)?;
     }
 
     Ok(())

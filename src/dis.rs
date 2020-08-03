@@ -90,8 +90,6 @@ impl Disassembly {
         let end = start + section.sh_size as usize;
         let bytes = &buffer[start..=end];
 
-        println!("Found {} bytes of code in \".text\"", bytes.len());
-
         // riscv32i instructions are always exactly 32-bits, stored in little
         // Endian regardless of the endianness of the target machine.
         let words: Vec<u32> = bytes
@@ -106,8 +104,6 @@ impl Disassembly {
             .collect();
 
         assert_eq!(words.len(), instrs.len());
-
-        println!("Found {} instructions in \".text\"", instrs.len());
 
         // TODO: Check the elf - I'm pretty sure the elf can specify that
         // the binary loads at a non-zero v/paddr...
