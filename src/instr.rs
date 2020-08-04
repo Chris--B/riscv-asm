@@ -449,14 +449,7 @@ impl fmt::Display for Arg {
             UnsignedImm(imm) => write!(f, "{}", imm),
             SignedImm(imm) => write!(f, "{}", imm),
             Special(special) => write!(f, "{}", special),
-            Address { base, offset } => {
-                if *offset == 0 {
-                    // When the offset is 0, it's cleaner to omit the addressing syntax
-                    write!(f, "{base}", base = base)
-                } else {
-                    write!(f, "{offset}({base})", base = base, offset = offset)
-                }
-            }
+            Address { base, offset } => write!(f, "{offset}({base})", base = base, offset = offset),
         }
     }
 }
@@ -611,20 +604,76 @@ impl Instr {
                     offset: imm,
                 },
             ],
-            Lb { .. } => vec![],
-            Lbu { .. } => vec![],
-            Ld { .. } => vec![],
-            Lh { .. } => vec![],
-            Lhu { .. } => vec![],
-            Lui { .. } => vec![],
-            Lw { .. } => vec![],
-            Lwu { .. } => vec![],
+
+            Lb { rd, rs1, imm } => vec![
+                rd.into(),
+                Address {
+                    base: rs1,
+                    offset: imm,
+                },
+            ],
+            Ld { rd, rs1, imm } => vec![
+                rd.into(),
+                Address {
+                    base: rs1,
+                    offset: imm,
+                },
+            ],
+            Lh { rd, rs1, imm } => vec![
+                rd.into(),
+                Address {
+                    base: rs1,
+                    offset: imm,
+                },
+            ],
+            Lw { rd, rs1, imm } => vec![
+                rd.into(),
+                Address {
+                    base: rs1,
+                    offset: imm,
+                },
+            ],
+
+            Lbu { rd, rs1: _, imm: _ } => vec![rd.into()],
+            Lhu { rd, rs1: _, imm: _ } => vec![rd.into()],
+            Lwu { rd, rs1: _, imm: _ } => vec![rd.into()],
+
+            Lui { rd, imm } => vec![rd.into(), imm.into()],
+
             Mret { .. } => vec![],
+
             Or { rd, rs1, rs2 } => vec![Register(rd), Register(rs1), Register(rs2)],
             Ori { rd, rs1, imm12 } => vec![Register(rd), Register(rs1), SignedImm(imm12)],
-            Sb { .. } => vec![],
-            Sd { .. } => vec![],
-            Sh { .. } => vec![],
+
+            Sb { rs1, rs2, imm } => vec![
+                rs2.into(),
+                Address {
+                    base: rs1,
+                    offset: imm,
+                },
+            ],
+            Sd { rs1, rs2, imm } => vec![
+                rs2.into(),
+                Address {
+                    base: rs1,
+                    offset: imm,
+                },
+            ],
+            Sh { rs1, rs2, imm } => vec![
+                rs2.into(),
+                Address {
+                    base: rs1,
+                    offset: imm,
+                },
+            ],
+            Sw { rs1, rs2, imm } => vec![
+                rs2.into(),
+                Address {
+                    base: rs1,
+                    offset: imm,
+                },
+            ],
+
             Sll { .. } => vec![],
             Slli { .. } => vec![],
             Slt { .. } => vec![],
@@ -636,12 +685,14 @@ impl Instr {
             Sret { .. } => vec![],
             Srl { .. } => vec![],
             Srli { .. } => vec![],
+
             Sub { rd, rs1, rs2 } => vec![Register(rd), Register(rs1), Register(rs2)],
-            Sw { .. } => vec![],
+
             Uret { .. } => vec![],
             Wfi { .. } => vec![],
-            Xor { .. } => vec![],
-            Xori { .. } => vec![],
+
+            Xor { rd, rs1, rs2 } => vec![rd.into(), rs1.into(), rs2.into()],
+            Xori { rd, rs1, imm12 } => vec![rd.into(), rs1.into(), imm12.into()],
         }
     }
 }
