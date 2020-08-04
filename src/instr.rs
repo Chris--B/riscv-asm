@@ -1,6 +1,7 @@
 #![deny(unreachable_patterns)]
 
 use core::convert::TryFrom;
+use std::fmt;
 
 /// Register mnemonics for the standard ABI
 ///
@@ -367,10 +368,122 @@ pub enum Instr {
     },
 }
 
+/// Instructions have arguments that specify the data that they used when executed.
+///
+/// Instructions can be:
+///     1. A register (`a0`, `zero`, ...)
+///     2. A signed or unsigned immediate (`0`, `123`, `0xff`, ...)
+///         The signedness typically changes per instruction and is otherwise fixed.
+///     3. A pair that forms a base (stored in a register) and offset (as an immediate) (`0(ra)`, `4(sp)`, ...)
+///
+/// This is used when enumerating over the instructions arguments. offset + base pairs are treated as a single argument
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Arg {
+    /// A value read from a register before executing the instruction, or written to one afterwards
+    Register(Reg),
+
+    /// An unsigned value that is supplied as a literal in the assembly
+    UnsignedImm(u32),
+
+    /// A signed value that is supplied as a literal in the assembly
+    SignedImm(i32),
+
+    /// Some (usually `SYSTEM`) instructions take special, named values that correspond to immediates
+    ///
+    /// It's more useful to represent them as strings than immediates, so there's a dedicated Arg type for them.
+    Special(String),
+
+    /// A pair of a register and a signed offset that is added to get an address that acts as a single argument
+    Address { base: Reg, offset: i32 },
+}
+
+impl fmt::Display for Reg {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use Reg::*;
+
+        let reg = match *self {
+            Zero => "zero",
+            Ra => "ra",
+            Sp => "sp",
+            Gp => "gp",
+            Tp => "tp",
+            T0 => "t0",
+            T1 => "t1",
+            T2 => "t2",
+            S0 => "s0",
+            S1 => "s1",
+            A0 => "a0",
+            A1 => "a1",
+            A2 => "a2",
+            A3 => "a3",
+            A4 => "a4",
+            A5 => "a5",
+            A6 => "a6",
+            A7 => "a7",
+            S2 => "s2",
+            S3 => "s3",
+            S4 => "s4",
+            S5 => "s5",
+            S6 => "s6",
+            S7 => "s7",
+            S8 => "s8",
+            S9 => "s9",
+            S10 => "s10",
+            S11 => "s11",
+            T3 => "t3",
+            T4 => "t4",
+            T5 => "t5",
+            T6 => "t6",
+        };
+
+        write!(f, "{}", reg)
+    }
+}
+
+impl fmt::Display for Arg {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use Arg::*;
+
+        match self {
+            Register(reg) => write!(f, "{}", reg),
+            UnsignedImm(imm) => write!(f, "{}", imm),
+            SignedImm(imm) => write!(f, "{}", imm),
+            Special(special) => write!(f, "{}", special),
+            Address { base, offset } => {
+                if *offset == 0 {
+                    // When the offset is 0, it's cleaner to omit the addressing syntax
+                    write!(f, "{base}", base = base)
+                } else {
+                    write!(f, "{offset}({base})", base = base, offset = offset)
+                }
+            }
+        }
+    }
+}
+
+impl From<Reg> for Arg {
+    fn from(reg: Reg) -> Arg {
+        Arg::Register(reg)
+    }
+}
+
+impl From<i32> for Arg {
+    fn from(value: i32) -> Arg {
+        Arg::SignedImm(value)
+    }
+}
+
+impl From<u32> for Arg {
+    fn from(value: u32) -> Arg {
+        Arg::UnsignedImm(value)
+    }
+}
+
 impl Instr {
     /// The all-lowercase neumonic for this instruction
     pub fn name(&self) -> String {
         use Instr::*;
+
         match *self {
             Illegal => "illegal",
             Hint { .. } => "hint",
@@ -431,6 +544,105 @@ impl Instr {
             Xori { .. } => "xori",
         }
         .into()
+    }
+
+    /// Values provided to an instruction that change its behavior
+    ///
+    /// Note: The number of arguments may change depending on the value of some arguments (e.g. omitting a trivial argument)
+    // TODO: Clarify when this happens.
+    pub fn args(&self) -> Vec<Arg> {
+        use Arg::*;
+        use Instr::*;
+        use Reg::*;
+
+        match *self {
+            Illegal => vec![],
+            Hint { .. } => vec![],
+
+            Add { rd, rs1, rs2 } => vec![rd.into(), rs1.into(), rs2.into()],
+            Addi { rd, rs1, imm } => vec![rd.into(), rs1.into(), imm.into()],
+
+            And { rd, rs1, rs2 } => vec![rd.into(), rs1.into(), rs2.into()],
+            Andi { rd, rs1, imm } => vec![rd.into(), rs1.into(), imm.into()],
+
+            Auipc { rd, imm } => vec![rd.into(), imm.into()],
+
+            Beq { rs1, rs2, imm } => vec![rs1.into(), rs2.into(), imm.into()],
+            Bge { rs1, rs2, imm } => vec![rs1.into(), rs2.into(), imm.into()],
+            Bgeu { rs1, rs2, imm } => vec![rs1.into(), rs2.into(), imm.into()],
+            Blt { rs1, rs2, imm } => vec![rs1.into(), rs2.into(), imm.into()],
+            Bltu { rs1, rs2, imm } => vec![rs1.into(), rs2.into(), imm.into()],
+            Bne { rs1, rs2, imm } => vec![rs1.into(), rs2.into(), imm.into()],
+
+            Csrrc { .. } => vec![],
+            Csrrci { .. } => vec![],
+            Csrrs { .. } => vec![],
+            Csrrsi { .. } => vec![],
+            Csrrw { .. } => vec![],
+            Csrrwi { .. } => vec![],
+            Ebreak { .. } => vec![],
+            Ecall { .. } => vec![],
+
+            Fence {
+                rd,
+                rs1,
+                successor,
+                predecessor,
+                fm,
+            } => vec![
+                Register(rd),
+                Register(rs1),
+                Special(format!(
+                    "succ: 0b{:b}, pred: 0b{:b}, fm: 0b{:b}",
+                    successor, predecessor, fm
+                )),
+            ],
+            FenceI { rd, rs1, imm12 } => vec![rd.into(), rs1.into(), imm12.into()],
+
+            Jal { rd, imm } => vec![rd.into(), imm.into()],
+            Jalr { rd: Ra, rs1, imm } => vec![Address {
+                base: rs1,
+                offset: imm,
+            }],
+            Jalr { rd, rs1, imm } => vec![
+                rd.into(),
+                Address {
+                    base: rs1,
+                    offset: imm,
+                },
+            ],
+            Lb { .. } => vec![],
+            Lbu { .. } => vec![],
+            Ld { .. } => vec![],
+            Lh { .. } => vec![],
+            Lhu { .. } => vec![],
+            Lui { .. } => vec![],
+            Lw { .. } => vec![],
+            Lwu { .. } => vec![],
+            Mret { .. } => vec![],
+            Or { rd, rs1, rs2 } => vec![Register(rd), Register(rs1), Register(rs2)],
+            Ori { rd, rs1, imm12 } => vec![Register(rd), Register(rs1), SignedImm(imm12)],
+            Sb { .. } => vec![],
+            Sd { .. } => vec![],
+            Sh { .. } => vec![],
+            Sll { .. } => vec![],
+            Slli { .. } => vec![],
+            Slt { .. } => vec![],
+            Slti { .. } => vec![],
+            Sltiu { .. } => vec![],
+            Sltu { .. } => vec![],
+            Sra { .. } => vec![],
+            Srai { .. } => vec![],
+            Sret { .. } => vec![],
+            Srl { .. } => vec![],
+            Srli { .. } => vec![],
+            Sub { rd, rs1, rs2 } => vec![Register(rd), Register(rs1), Register(rs2)],
+            Sw { .. } => vec![],
+            Uret { .. } => vec![],
+            Wfi { .. } => vec![],
+            Xor { .. } => vec![],
+            Xori { .. } => vec![],
+        }
     }
 }
 

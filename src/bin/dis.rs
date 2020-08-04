@@ -98,7 +98,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Instruction as text
         if let Some(instr) = entry.o_instr {
-            write!(out, "{:?}", instr)?;
+            // First, print the instruction name
+            write!(out, "{}", instr.name())?;
+
+            // Then, follow with any args, comma separated.
+            let args = instr.args();
+
+            let mut iter = args.iter();
+            if let Some(arg) = iter.next() {
+                // No comma preceeding the first item
+                write!(out, "\t{}", arg)?;
+
+                for arg in iter {
+                    write!(out, ", {}", arg)?;
+                }
+            }
         } else {
             write!(out, "???")?;
         }
