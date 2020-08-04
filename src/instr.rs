@@ -1,3 +1,5 @@
+#![deny(unreachable_patterns)]
+
 use core::convert::TryFrom;
 
 /// Register mnemonics for the standard ABI
@@ -363,6 +365,73 @@ pub enum Instr {
         /// Most of them use rd == x0 as a reserved space
         hint: (),
     },
+}
+
+impl Instr {
+    /// The all-lowercase neumonic for this instruction
+    pub fn name(&self) -> String {
+        use Instr::*;
+        match *self {
+            Illegal => "illegal",
+            Hint { .. } => "hint",
+
+            Add { .. } => "add",
+            Addi { .. } => "addi",
+            And { .. } => "and",
+            Andi { .. } => "andi",
+            Auipc { .. } => "auipc",
+            Beq { .. } => "beq",
+            Bge { .. } => "bge",
+            Bgeu { .. } => "bgeu",
+            Blt { .. } => "blt",
+            Bltu { .. } => "bltu",
+            Bne { .. } => "bne",
+            Csrrc { .. } => "csrrc",
+            Csrrci { .. } => "csrrci",
+            Csrrs { .. } => "csrrs",
+            Csrrsi { .. } => "csrrsi",
+            Csrrw { .. } => "csrrw",
+            Csrrwi { .. } => "csrrwi",
+            Ebreak { .. } => "ebreak",
+            Ecall { .. } => "ecall",
+            Fence { .. } => "fence",
+            FenceI { .. } => "fencei",
+            Jal { .. } => "jal",
+            Jalr { .. } => "jalr",
+            Lb { .. } => "lb",
+            Lbu { .. } => "lbu",
+            Ld { .. } => "ld",
+            Lh { .. } => "lh",
+            Lhu { .. } => "lhu",
+            Lui { .. } => "lui",
+            Lw { .. } => "lw",
+            Lwu { .. } => "lwu",
+            Mret { .. } => "mret",
+            Or { .. } => "or",
+            Ori { .. } => "ori",
+            Sb { .. } => "sb",
+            Sd { .. } => "sd",
+            Sh { .. } => "sh",
+            Sll { .. } => "sll",
+            Slli { .. } => "slli",
+            Slt { .. } => "slt",
+            Slti { .. } => "slti",
+            Sltiu { .. } => "sltiu",
+            Sltu { .. } => "sltu",
+            Sra { .. } => "sra",
+            Srai { .. } => "srai",
+            Sret { .. } => "sret",
+            Srl { .. } => "srl",
+            Srli { .. } => "srli",
+            Sub { .. } => "sub",
+            Sw { .. } => "sw",
+            Uret { .. } => "uret",
+            Wfi { .. } => "wfi",
+            Xor { .. } => "xor",
+            Xori { .. } => "xori",
+        }
+        .into()
+    }
 }
 
 /// An error when a register is referenced out of bounds
