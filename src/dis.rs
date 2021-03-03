@@ -61,6 +61,11 @@ impl Disassembly {
     ///
     /// `elf` must have been parsed from `buffer`.
     fn parse_from_elf<'a>(elf: &'a Elf, buffer: &'a [u8]) -> Result<Self> {
+        // We panic instead of handling an error condition in here.
+        // For now, we will silence this clippy warning, but in the future
+        // we should return a proper error here.
+        #![allow(clippy::unnecessary_wraps)]
+
         // First off, we need to isolate the '.text' section.
         //
         // We expect to find exactly one ".text" section.
